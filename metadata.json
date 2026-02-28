@@ -1,0 +1,5 @@
+{
+  "name": "Scenic Timeline Manager",
+  "description": "A lightweight web application to visually model and manage a scenic timeline based on a musical track, with multi-actor support and image export.",
+  "requestFramePermissions": []
+}
