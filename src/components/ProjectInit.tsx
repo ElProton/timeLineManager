@@ -35,8 +35,14 @@ export function ProjectInit({ onInit }: Props) {
 
     onInit({
       metadata: { title, musicName, durationSeconds },
-      actors: [],
-      actions: [],
+      layers: [
+        {
+          id: crypto.randomUUID(),
+          name: "Principal",
+          actors: [],
+          actions: [],
+        },
+      ],
     });
   };
 
@@ -48,15 +54,33 @@ export function ProjectInit({ onInit }: Props) {
     reader.onload = (event) => {
       try {
         const json = event.target?.result as string;
-        const data = JSON.parse(json) as ProjectData;
+        const raw = JSON.parse(json);
 
         // Basic validation
         if (
-          !data.metadata ||
-          !data.metadata.title ||
-          !data.metadata.durationSeconds
+          !raw.metadata ||
+          !raw.metadata.title ||
+          !raw.metadata.durationSeconds
         ) {
           throw new Error("Invalid project structure");
+        }
+
+        // Backward compatibility: migrate old format (actors/actions at root) to layers
+        let data: ProjectData;
+        if (raw.layers && Array.isArray(raw.layers)) {
+          data = raw as ProjectData;
+        } else {
+          data = {
+            metadata: raw.metadata,
+            layers: [
+              {
+                id: crypto.randomUUID(),
+                name: "Principal",
+                actors: raw.actors || [],
+                actions: raw.actions || [],
+              },
+            ],
+          };
         }
 
         onInit(data);

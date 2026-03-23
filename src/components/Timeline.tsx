@@ -1,11 +1,13 @@
 import React, { useState } from "react";
-import { ProjectData, Action, Actor } from "../types";
+import { ProjectMetadata, Action, Actor } from "../types";
 import { formatTime } from "../utils/time";
 import { Edit2, Trash2 } from "lucide-react";
 import { cn } from "../utils/cn";
 
 interface Props {
-  data: ProjectData;
+  metadata: ProjectMetadata;
+  actors: Actor[];
+  actions: Action[];
   filteredActorId: string | null;
   onEditAction: (action: Action) => void;
   onDeleteAction: (actionId: string) => void;
@@ -16,7 +18,9 @@ interface Props {
 export const Timeline = React.forwardRef<HTMLDivElement, Props>(
   (
     {
-      data,
+      metadata,
+      actors,
+      actions,
       filteredActorId,
       onEditAction,
       onDeleteAction,
@@ -27,7 +31,6 @@ export const Timeline = React.forwardRef<HTMLDivElement, Props>(
   ) => {
     const [hoveredActionId, setHoveredActionId] = useState<string | null>(null);
 
-    const { metadata, actors, actions } = data;
     const { durationSeconds } = metadata;
 
     const visibleActors = filteredActorId
