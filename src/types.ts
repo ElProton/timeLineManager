@@ -18,8 +18,14 @@ export interface Action {
   color: string;
 }
 
-export interface ProjectData {
-  metadata: ProjectMetadata;
+export interface Layer {
+  id: string;
+  name: string;
   actors: Actor[];
   actions: Action[];
+}
+
+export interface ProjectData {
+  metadata: ProjectMetadata;
+  layers: Layer[];
 }

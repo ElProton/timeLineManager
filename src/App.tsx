@@ -1,5 +1,5 @@
 import React, { useState, useRef } from "react";
-import { ProjectData, Action, Actor } from "./types";
+import { ProjectData, Action, Actor, Layer } from "./types";
 import { ProjectInit } from "./components/ProjectInit";
 import { Timeline } from "./components/Timeline";
 import { ActionModal } from "./components/ActionModal";
@@ -13,11 +13,13 @@ import {
   Filter,
   Settings,
   Trash2,
+  Layers,
 } from "lucide-react";
 import * as htmlToImage from "html-to-image";
 
 export default function App() {
   const [projectData, setProjectData] = useState<ProjectData | null>(null);
+  const [activeLayerId, setActiveLayerId] = useState<string | null>(null);
   const [filteredActorId, setFilteredActorId] = useState<string | null>(null);
 
   const [isActionModalOpen, setIsActionModalOpen] = useState(false);
@@ -26,11 +28,61 @@ export default function App() {
   const [isActorModalOpen, setIsActorModalOpen] = useState(false);
   const [editingActor, setEditingActor] = useState<Actor | null>(null);
 
+  const [isAddingLayer, setIsAddingLayer] = useState(false);
+  const [newLayerName, setNewLayerName] = useState("");
+
   const timelineRef = useRef<HTMLDivElement>(null);
 
   if (!projectData) {
-    return <ProjectInit onInit={setProjectData} />;
+    return (
+      <ProjectInit
+        onInit={(data) => {
+          setProjectData(data);
+          setActiveLayerId(data.layers[0]?.id ?? null);
+        }}
+      />
+    );
   }
+
+  const activeLayer =
+    projectData.layers.find((l) => l.id === activeLayerId) ??
+    projectData.layers[0] ??
+    null;
+
+  const updateActiveLayer = (updater: (layer: Layer) => Layer) => {
+    setProjectData((prev) => {
+      if (!prev || !activeLayer) return prev;
+      return {
+        ...prev,
+        layers: prev.layers.map((l) =>
+          l.id === activeLayer.id ? updater(l) : l,
+        ),
+      };
+    });
+  };
+
+  const handleAddLayer = () => {
+    const trimmed = newLayerName.trim();
+    if (!trimmed) return;
+    if (projectData.layers.some((l) => l.name === trimmed)) {
+      alert("A layer with this name already exists.");
+      return;
+    }
+    const newLayer: Layer = {
+      id: crypto.randomUUID(),
+      name: trimmed,
+      actors: [],
+      actions: [],
+    };
+    setProjectData((prev) => {
+      if (!prev) return prev;
+      return { ...prev, layers: [...prev.layers, newLayer] };
+    });
+    setActiveLayerId(newLayer.id);
+    setFilteredActorId(null);
+    setNewLayerName("");
+    setIsAddingLayer(false);
+  };
 
   const handleSaveJson = () => {
     const dataStr = JSON.stringify(projectData, null, 2);
@@ -72,38 +124,33 @@ export default function App() {
   };
 
   const handleSaveAction = (action: Action) => {
-    setProjectData((prev) => {
-      if (!prev) return prev;
-      const exists = prev.actions.some((a) => a.id === action.id);
+    updateActiveLayer((layer) => {
+      const exists = layer.actions.some((a) => a.id === action.id);
       return {
-        ...prev,
+        ...layer,
         actions: exists
-          ? prev.actions.map((a) => (a.id === action.id ? action : a))
-          : [...prev.actions, action],
+          ? layer.actions.map((a) => (a.id === action.id ? action : a))
+          : [...layer.actions, action],
       };
     });
   };
 
   const handleDeleteAction = (actionId: string) => {
     if (!confirm("Are you sure you want to delete this action?")) return;
-    setProjectData((prev) => {
-      if (!prev) return prev;
-      return {
-        ...prev,
-        actions: prev.actions.filter((a) => a.id !== actionId),
-      };
-    });
+    updateActiveLayer((layer) => ({
+      ...layer,
+      actions: layer.actions.filter((a) => a.id !== actionId),
+    }));
   };
 
   const handleSaveActor = (actor: Actor) => {
-    setProjectData((prev) => {
-      if (!prev) return prev;
-      const exists = prev.actors.some((a) => a.id === actor.id);
+    updateActiveLayer((layer) => {
+      const exists = layer.actors.some((a) => a.id === actor.id);
       return {
-        ...prev,
+        ...layer,
         actors: exists
-          ? prev.actors.map((a) => (a.id === actor.id ? actor : a))
-          : [...prev.actors, actor],
+          ? layer.actors.map((a) => (a.id === actor.id ? actor : a))
+          : [...layer.actors, actor],
       };
     });
   };
@@ -115,9 +162,8 @@ export default function App() {
       )
     )
       return;
-    setProjectData((prev) => {
-      if (!prev) return prev;
-      const newActions = prev.actions
+    updateActiveLayer((layer) => {
+      const newActions = layer.actions
         .map((a) => ({
           ...a,
           actorIds: a.actorIds.filter((id) => id !== actorId),
@@ -125,8 +171,8 @@ export default function App() {
         .filter((a) => a.actorIds.length > 0);
 
       return {
-        ...prev,
-        actors: prev.actors.filter((a) => a.id !== actorId),
+        ...layer,
+        actors: layer.actors.filter((a) => a.id !== actorId),
         actions: newActions,
       };
     });
@@ -134,6 +180,9 @@ export default function App() {
       setFilteredActorId(null);
     }
   };
+
+  const actors = activeLayer?.actors ?? [];
+  const actions = activeLayer?.actions ?? [];
 
   return (
     <div className="min-h-screen bg-neutral-50 flex flex-col font-sans text-neutral-900">
@@ -178,6 +227,73 @@ export default function App() {
         {/* Toolbar */}
         <div className="flex items-center justify-between bg-white p-4 rounded-xl shadow-sm border border-neutral-200">
           <div className="flex items-center gap-3">
+            {/* Layer Selector */}
+            <div className="flex items-center gap-2 text-sm font-medium text-neutral-600">
+              <Layers className="w-4 h-4" />
+              Layer:
+            </div>
+            {isAddingLayer ? (
+              <div className="flex items-center gap-2">
+                <input
+                  type="text"
+                  value={newLayerName}
+                  onChange={(e) => setNewLayerName(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") handleAddLayer();
+                    if (e.key === "Escape") {
+                      setIsAddingLayer(false);
+                      setNewLayerName("");
+                    }
+                  }}
+                  className="px-3 py-2 border border-neutral-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-white min-w-[150px]"
+                  placeholder="Layer name..."
+                  autoFocus
+                />
+                <button
+                  onClick={handleAddLayer}
+                  className="px-3 py-2 bg-indigo-600 text-white rounded-lg text-sm font-medium hover:bg-indigo-700 transition-colors"
+                >
+                  Add
+                </button>
+                <button
+                  onClick={() => {
+                    setIsAddingLayer(false);
+                    setNewLayerName("");
+                  }}
+                  className="px-3 py-2 text-neutral-600 rounded-lg text-sm font-medium hover:bg-neutral-100 transition-colors"
+                >
+                  Cancel
+                </button>
+              </div>
+            ) : (
+              <div className="flex items-center gap-2">
+                <select
+                  value={activeLayerId || ""}
+                  onChange={(e) => {
+                    setActiveLayerId(e.target.value);
+                    setFilteredActorId(null);
+                  }}
+                  className="px-3 py-2 border border-neutral-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-white min-w-[150px]"
+                >
+                  {projectData.layers.map((layer) => (
+                    <option key={layer.id} value={layer.id}>
+                      {layer.name}
+                    </option>
+                  ))}
+                </select>
+                <button
+                  onClick={() => setIsAddingLayer(true)}
+                  className="flex items-center gap-1 px-3 py-2 bg-neutral-100 text-neutral-700 rounded-lg hover:bg-neutral-200 transition-colors font-medium text-sm"
+                  title="Add a new layer"
+                >
+                  <Plus className="w-4 h-4" />
+                  Layer
+                </button>
+              </div>
+            )}
+
+            <div className="w-px h-8 bg-neutral-200 mx-1" />
+
             <button
               onClick={() => {
                 setEditingActor(null);
@@ -194,10 +310,8 @@ export default function App() {
                 setIsActionModalOpen(true);
               }}
               className="flex items-center gap-2 px-4 py-2 bg-neutral-100 text-neutral-700 rounded-lg hover:bg-neutral-200 transition-colors font-medium text-sm"
-              disabled={projectData.actors.length === 0}
-              title={
-                projectData.actors.length === 0 ? "Add an actor first" : ""
-              }
+              disabled={actors.length === 0}
+              title={actors.length === 0 ? "Add an actor first" : ""}
             >
               <Plus className="w-4 h-4" />
               Add Action
@@ -215,7 +329,7 @@ export default function App() {
               className="px-3 py-2 border border-neutral-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-white min-w-[150px]"
             >
               <option value="">All Actors</option>
-              {projectData.actors.map((actor) => (
+              {actors.map((actor) => (
                 <option key={actor.id} value={actor.id}>
                   {actor.name}
                 </option>
@@ -227,7 +341,14 @@ export default function App() {
         {/* Timeline Area */}
         <div className="flex-1 bg-white rounded-xl shadow-sm border border-neutral-200 overflow-hidden flex flex-col">
           <div className="p-4 border-b border-neutral-100 bg-neutral-50/50 flex justify-between items-center">
-            <h2 className="font-semibold text-neutral-700">Timeline View</h2>
+            <h2 className="font-semibold text-neutral-700">
+              Timeline View
+              {activeLayer && (
+                <span className="ml-2 text-sm font-normal text-neutral-500">
+                  — {activeLayer.name}
+                </span>
+              )}
+            </h2>
             {filteredActorId && (
               <span className="px-2.5 py-1 bg-indigo-100 text-indigo-800 text-xs font-medium rounded-full">
                 Filtered View
@@ -237,7 +358,9 @@ export default function App() {
           <div className="p-6 overflow-auto flex-1">
             <Timeline
               ref={timelineRef}
-              data={projectData}
+              metadata={projectData.metadata}
+              actors={actors}
+              actions={actions}
               filteredActorId={filteredActorId}
               onEditAction={(action) => {
                 setEditingAction(action);
@@ -260,7 +383,7 @@ export default function App() {
         onClose={() => setIsActionModalOpen(false)}
         onSave={handleSaveAction}
         initialAction={editingAction}
-        actors={projectData.actors}
+        actors={actors}
         maxDuration={projectData.metadata.durationSeconds}
       />
 
