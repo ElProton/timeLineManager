@@ -1,10 +1,12 @@
-import React, { useState, useRef } from "react";
-import { ProjectData, Action, Actor } from "./types";
 import { ProjectInit } from "./components/ProjectInit";
 import { Timeline } from "./components/Timeline";
 import { ActionModal } from "./components/ActionModal";
 import { ActorModal } from "./components/ActorModal";
+import { MetadataModal } from "./components/MetadataModal";
 import { formatTime } from "./utils/time";
+import { useProjectManager } from "./hooks/useProjectManager";
+import { useModals } from "./hooks/useModals";
+import { useExport } from "./hooks/useExport";
 import {
   Download,
   Image as ImageIcon,
@@ -12,159 +14,93 @@ import {
   Users,
   Filter,
   Settings,
-  Trash2,
+  Edit2,
+  RotateCcw,
+  Undo2,
+  Redo2,
 } from "lucide-react";
-import * as htmlToImage from "html-to-image";
 
 export default function App() {
-  const [projectData, setProjectData] = useState<ProjectData | null>(null);
-  const [filteredActorId, setFilteredActorId] = useState<string | null>(null);
+  const project = useProjectManager();
+  const modals = useModals();
+  const { timelineRef, saveJson, exportImage } = useExport(project.projectData);
 
-  const [isActionModalOpen, setIsActionModalOpen] = useState(false);
-  const [editingAction, setEditingAction] = useState<Action | null>(null);
-
-  const [isActorModalOpen, setIsActorModalOpen] = useState(false);
-  const [editingActor, setEditingActor] = useState<Actor | null>(null);
-
-  const timelineRef = useRef<HTMLDivElement>(null);
-
-  if (!projectData) {
-    return <ProjectInit onInit={setProjectData} />;
+  if (!project.projectData) {
+    return (
+      <ProjectInit
+        onInit={project.initProject}
+        cachedProject={project.cachedProject}
+      />
+    );
   }
 
-  const handleSaveJson = () => {
-    const dataStr = JSON.stringify(projectData, null, 2);
-    const blob = new Blob([dataStr], { type: "application/json" });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement("a");
-    link.href = url;
-    link.download = `${projectData.metadata.title.replace(/\s+/g, "_")}_timeline.json`;
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    URL.revokeObjectURL(url);
-  };
-
-  const handleExportImage = async () => {
-    if (!timelineRef.current) return;
-    try {
-      const node = timelineRef.current;
-      const dataUrl = await htmlToImage.toJpeg(node, {
-        quality: 0.95,
-        backgroundColor: "#ffffff",
-        width: node.scrollWidth,
-        height: node.scrollHeight,
-        style: {
-          transform: "scale(1)",
-          transformOrigin: "top left",
-          width: node.scrollWidth + "px",
-          height: node.scrollHeight + "px",
-        },
-      });
-      const link = document.createElement("a");
-      link.download = `${projectData.metadata.title.replace(/\s+/g, "_")}_timeline.jpeg`;
-      link.href = dataUrl;
-      link.click();
-    } catch (err) {
-      console.error("Failed to export image", err);
-      alert("Failed to export image. Please try again.");
-    }
-  };
-
-  const handleSaveAction = (action: Action) => {
-    setProjectData((prev) => {
-      if (!prev) return prev;
-      const exists = prev.actions.some((a) => a.id === action.id);
-      return {
-        ...prev,
-        actions: exists
-          ? prev.actions.map((a) => (a.id === action.id ? action : a))
-          : [...prev.actions, action],
-      };
-    });
-  };
-
-  const handleDeleteAction = (actionId: string) => {
-    if (!confirm("Are you sure you want to delete this action?")) return;
-    setProjectData((prev) => {
-      if (!prev) return prev;
-      return {
-        ...prev,
-        actions: prev.actions.filter((a) => a.id !== actionId),
-      };
-    });
-  };
-
-  const handleSaveActor = (actor: Actor) => {
-    setProjectData((prev) => {
-      if (!prev) return prev;
-      const exists = prev.actors.some((a) => a.id === actor.id);
-      return {
-        ...prev,
-        actors: exists
-          ? prev.actors.map((a) => (a.id === actor.id ? actor : a))
-          : [...prev.actors, actor],
-      };
-    });
-  };
-
-  const handleDeleteActor = (actorId: string) => {
-    if (
-      !confirm(
-        "Are you sure you want to delete this actor? Actions associated only with this actor will be removed.",
-      )
-    )
-      return;
-    setProjectData((prev) => {
-      if (!prev) return prev;
-      const newActions = prev.actions
-        .map((a) => ({
-          ...a,
-          actorIds: a.actorIds.filter((id) => id !== actorId),
-        }))
-        .filter((a) => a.actorIds.length > 0);
-
-      return {
-        ...prev,
-        actors: prev.actors.filter((a) => a.id !== actorId),
-        actions: newActions,
-      };
-    });
-    if (filteredActorId === actorId) {
-      setFilteredActorId(null);
-    }
-  };
+  const { projectData } = project;
 
   return (
     <div className="min-h-screen bg-neutral-50 flex flex-col font-sans text-neutral-900">
       {/* Header */}
       <header className="bg-white border-b border-neutral-200 px-6 py-4 flex items-center justify-between sticky top-0 z-30 shadow-sm">
-        <div>
-          <h1 className="text-xl font-bold tracking-tight text-neutral-900">
-            {projectData.metadata.title}
-          </h1>
-          <div className="flex items-center gap-3 text-sm text-neutral-500 mt-1">
-            <span className="flex items-center gap-1">
-              <Settings className="w-3.5 h-3.5" />
-              {projectData.metadata.musicName}
-            </span>
-            <span>&bull;</span>
-            <span>
-              {formatTime(projectData.metadata.durationSeconds)} total
-            </span>
+        <div className="flex items-center gap-3">
+          <div>
+            <h1 className="text-xl font-bold tracking-tight text-neutral-900">
+              {projectData.metadata.title}
+            </h1>
+            <div className="flex items-center gap-3 text-sm text-neutral-500 mt-1">
+              <span className="flex items-center gap-1">
+                <Settings className="w-3.5 h-3.5" />
+                {projectData.metadata.musicName}
+              </span>
+              <span>&bull;</span>
+              <span>
+                {formatTime(projectData.metadata.durationSeconds)} total
+              </span>
+            </div>
           </div>
+          <button
+            onClick={modals.openMetadataModal}
+            className="p-2 text-neutral-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors"
+            title="Edit project settings"
+          >
+            <Edit2 className="w-4 h-4" />
+          </button>
         </div>
 
         <div className="flex items-center gap-3">
+          <div className="flex items-center gap-1 border-r border-neutral-200 pr-3">
+            <button
+              onClick={project.undo}
+              disabled={!project.canUndo}
+              className="p-2 text-neutral-600 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+              title="Undo"
+            >
+              <Undo2 className="w-4 h-4" />
+            </button>
+            <button
+              onClick={project.redo}
+              disabled={!project.canRedo}
+              className="p-2 text-neutral-600 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+              title="Redo"
+            >
+              <Redo2 className="w-4 h-4" />
+            </button>
+          </div>
           <button
-            onClick={handleSaveJson}
+            onClick={project.clearCache}
+            className="flex items-center gap-2 px-4 py-2 bg-white border border-neutral-300 text-neutral-700 rounded-lg hover:bg-neutral-50 transition-colors font-medium text-sm shadow-sm"
+            title="Clear saved data and start over"
+          >
+            <RotateCcw className="w-4 h-4" />
+            Reset
+          </button>
+          <button
+            onClick={saveJson}
             className="flex items-center gap-2 px-4 py-2 bg-white border border-neutral-300 text-neutral-700 rounded-lg hover:bg-neutral-50 transition-colors font-medium text-sm shadow-sm"
           >
             <Download className="w-4 h-4" />
             Save JSON
           </button>
           <button
-            onClick={handleExportImage}
+            onClick={exportImage}
             className="flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors font-medium text-sm shadow-sm"
           >
             <ImageIcon className="w-4 h-4" />
@@ -179,20 +115,14 @@ export default function App() {
         <div className="flex items-center justify-between bg-white p-4 rounded-xl shadow-sm border border-neutral-200">
           <div className="flex items-center gap-3">
             <button
-              onClick={() => {
-                setEditingActor(null);
-                setIsActorModalOpen(true);
-              }}
+              onClick={() => modals.openActorModal()}
               className="flex items-center gap-2 px-4 py-2 bg-neutral-100 text-neutral-700 rounded-lg hover:bg-neutral-200 transition-colors font-medium text-sm"
             >
               <Users className="w-4 h-4" />
               Add Actor
             </button>
             <button
-              onClick={() => {
-                setEditingAction(null);
-                setIsActionModalOpen(true);
-              }}
+              onClick={() => modals.openActionModal()}
               className="flex items-center gap-2 px-4 py-2 bg-neutral-100 text-neutral-700 rounded-lg hover:bg-neutral-200 transition-colors font-medium text-sm"
               disabled={projectData.actors.length === 0}
               title={
@@ -210,8 +140,10 @@ export default function App() {
               Filter:
             </div>
             <select
-              value={filteredActorId || ""}
-              onChange={(e) => setFilteredActorId(e.target.value || null)}
+              value={project.filteredActorId || ""}
+              onChange={(e) =>
+                project.setFilteredActorId(e.target.value || null)
+              }
               className="px-3 py-2 border border-neutral-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-white min-w-[150px]"
             >
               <option value="">All Actors</option>
@@ -228,7 +160,7 @@ export default function App() {
         <div className="flex-1 bg-white rounded-xl shadow-sm border border-neutral-200 overflow-hidden flex flex-col">
           <div className="p-4 border-b border-neutral-100 bg-neutral-50/50 flex justify-between items-center">
             <h2 className="font-semibold text-neutral-700">Timeline View</h2>
-            {filteredActorId && (
+            {project.filteredActorId && (
               <span className="px-2.5 py-1 bg-indigo-100 text-indigo-800 text-xs font-medium rounded-full">
                 Filtered View
               </span>
@@ -238,17 +170,11 @@ export default function App() {
             <Timeline
               ref={timelineRef}
               data={projectData}
-              filteredActorId={filteredActorId}
-              onEditAction={(action) => {
-                setEditingAction(action);
-                setIsActionModalOpen(true);
-              }}
-              onDeleteAction={handleDeleteAction}
-              onEditActor={(actor) => {
-                setEditingActor(actor);
-                setIsActorModalOpen(true);
-              }}
-              onDeleteActor={handleDeleteActor}
+              filteredActorId={project.filteredActorId}
+              onEditAction={(action) => modals.openActionModal(action)}
+              onDeleteAction={project.deleteAction}
+              onEditActor={(actor) => modals.openActorModal(actor)}
+              onDeleteActor={project.deleteActor}
             />
           </div>
         </div>
@@ -256,19 +182,27 @@ export default function App() {
 
       {/* Modals */}
       <ActionModal
-        isOpen={isActionModalOpen}
-        onClose={() => setIsActionModalOpen(false)}
-        onSave={handleSaveAction}
-        initialAction={editingAction}
+        isOpen={modals.isActionModalOpen}
+        onClose={modals.closeActionModal}
+        onSave={project.saveAction}
+        initialAction={modals.editingAction}
         actors={projectData.actors}
         maxDuration={projectData.metadata.durationSeconds}
       />
 
       <ActorModal
-        isOpen={isActorModalOpen}
-        onClose={() => setIsActorModalOpen(false)}
-        onSave={handleSaveActor}
-        initialActor={editingActor}
+        isOpen={modals.isActorModalOpen}
+        onClose={modals.closeActorModal}
+        onSave={project.saveActor}
+        initialActor={modals.editingActor}
+      />
+
+      <MetadataModal
+        isOpen={modals.isMetadataModalOpen}
+        onClose={modals.closeMetadataModal}
+        onSave={project.saveMetadata}
+        metadata={projectData.metadata}
+        maxActionEnd={project.maxActionEnd}
       />
     </div>
   );

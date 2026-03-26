@@ -18,7 +18,10 @@ export interface Action {
   color: string;
 }
 
+export const CURRENT_SCHEMA_VERSION = 1;
+
 export interface ProjectData {
+  schemaVersion: number;
   metadata: ProjectMetadata;
   actors: Actor[];
   actions: Action[];

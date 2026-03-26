@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { Action, Actor } from "../types";
 import { parseTime, formatTime, isValidTimeFormat } from "../utils/time";
-import { X } from "lucide-react";
+import { Modal } from "./Modal";
 
 interface Props {
   isOpen: boolean;
@@ -57,8 +57,6 @@ export function ActionModal({
     setError("");
   }, [initialAction, isOpen, maxDuration]);
 
-  if (!isOpen) return null;
-
   const handleSave = () => {
     setError("");
     if (!description) {
@@ -103,125 +101,116 @@ export function ActionModal({
     );
   };
 
+  const footer = (
+    <>
+      <button
+        onClick={onClose}
+        className="px-4 py-2 text-neutral-700 font-medium hover:bg-neutral-200 rounded-lg transition-colors"
+      >
+        Cancel
+      </button>
+      <button
+        onClick={handleSave}
+        className="px-4 py-2 bg-indigo-600 text-white font-medium hover:bg-indigo-700 rounded-lg transition-colors"
+      >
+        Save Action
+      </button>
+    </>
+  );
+
   return (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg overflow-hidden">
-        <div className="flex items-center justify-between p-4 border-b border-neutral-200">
-          <h2 className="text-xl font-semibold text-neutral-900">
-            {initialAction ? "Edit Action" : "New Action"}
-          </h2>
-          <button
-            onClick={onClose}
-            className="text-neutral-500 hover:text-neutral-700"
-          >
-            <X className="w-5 h-5" />
-          </button>
+    <Modal
+      isOpen={isOpen}
+      onClose={onClose}
+      title={initialAction ? "Edit Action" : "New Action"}
+      footer={footer}
+    >
+      <div>
+        <label className="block text-sm font-medium text-neutral-700 mb-1">
+          Description
+        </label>
+        <input
+          type="text"
+          value={description}
+          onChange={(e) => setDescription(e.target.value)}
+          className="w-full px-3 py-2 border border-neutral-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
+          placeholder="e.g. Enter Stage Left"
+        />
+      </div>
+
+      <div className="grid grid-cols-2 gap-4">
+        <div>
+          <label className="block text-sm font-medium text-neutral-700 mb-1">
+            Start Time (mm:ss)
+          </label>
+          <input
+            type="text"
+            value={timeStartStr}
+            onChange={(e) => setTimeStartStr(e.target.value)}
+            className="w-full px-3 py-2 border border-neutral-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
+          />
         </div>
-
-        <div className="p-6 space-y-4">
-          <div>
-            <label className="block text-sm font-medium text-neutral-700 mb-1">
-              Description
-            </label>
-            <input
-              type="text"
-              value={description}
-              onChange={(e) => setDescription(e.target.value)}
-              className="w-full px-3 py-2 border border-neutral-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
-              placeholder="e.g. Enter Stage Left"
-            />
-          </div>
-
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className="block text-sm font-medium text-neutral-700 mb-1">
-                Start Time (mm:ss)
-              </label>
-              <input
-                type="text"
-                value={timeStartStr}
-                onChange={(e) => setTimeStartStr(e.target.value)}
-                className="w-full px-3 py-2 border border-neutral-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-neutral-700 mb-1">
-                End Time (mm:ss)
-              </label>
-              <input
-                type="text"
-                value={timeEndStr}
-                onChange={(e) => setTimeEndStr(e.target.value)}
-                className="w-full px-3 py-2 border border-neutral-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
-              />
-            </div>
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-neutral-700 mb-2">
-              Actors
-            </label>
-            <div className="flex flex-wrap gap-2">
-              {actors.map((actor) => (
-                <button
-                  key={actor.id}
-                  onClick={() => toggleActor(actor.id)}
-                  className={`px-3 py-1.5 rounded-full text-sm font-medium transition-colors ${
-                    selectedActorIds.includes(actor.id)
-                      ? "bg-indigo-100 text-indigo-800 border-2 border-indigo-500"
-                      : "bg-neutral-100 text-neutral-600 border-2 border-transparent hover:bg-neutral-200"
-                  }`}
-                >
-                  {actor.name}
-                </button>
-              ))}
-              {actors.length === 0 && (
-                <span className="text-sm text-neutral-500 italic">
-                  No actors available. Add actors first.
-                </span>
-              )}
-            </div>
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-neutral-700 mb-2">
-              Color
-            </label>
-            <div className="flex flex-wrap gap-2">
-              {COLORS.map((c) => (
-                <button
-                  key={c}
-                  onClick={() => setColor(c)}
-                  className={`w-8 h-8 rounded-full transition-transform ${
-                    color === c
-                      ? "scale-110 ring-2 ring-offset-2 ring-neutral-800"
-                      : "hover:scale-110"
-                  }`}
-                  style={{ backgroundColor: c }}
-                  aria-label={`Select color ${c}`}
-                />
-              ))}
-            </div>
-          </div>
-
-          {error && <p className="text-red-500 text-sm">{error}</p>}
-        </div>
-
-        <div className="p-4 border-t border-neutral-200 flex justify-end gap-3 bg-neutral-50">
-          <button
-            onClick={onClose}
-            className="px-4 py-2 text-neutral-700 font-medium hover:bg-neutral-200 rounded-lg transition-colors"
-          >
-            Cancel
-          </button>
-          <button
-            onClick={handleSave}
-            className="px-4 py-2 bg-indigo-600 text-white font-medium hover:bg-indigo-700 rounded-lg transition-colors"
-          >
-            Save Action
-          </button>
+        <div>
+          <label className="block text-sm font-medium text-neutral-700 mb-1">
+            End Time (mm:ss)
+          </label>
+          <input
+            type="text"
+            value={timeEndStr}
+            onChange={(e) => setTimeEndStr(e.target.value)}
+            className="w-full px-3 py-2 border border-neutral-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
+          />
         </div>
       </div>
-    </div>
+
+      <div>
+        <label className="block text-sm font-medium text-neutral-700 mb-2">
+          Actors
+        </label>
+        <div className="flex flex-wrap gap-2">
+          {actors.map((actor) => (
+            <button
+              key={actor.id}
+              onClick={() => toggleActor(actor.id)}
+              className={`px-3 py-1.5 rounded-full text-sm font-medium transition-colors ${
+                selectedActorIds.includes(actor.id)
+                  ? "bg-indigo-100 text-indigo-800 border-2 border-indigo-500"
+                  : "bg-neutral-100 text-neutral-600 border-2 border-transparent hover:bg-neutral-200"
+              }`}
+            >
+              {actor.name}
+            </button>
+          ))}
+          {actors.length === 0 && (
+            <span className="text-sm text-neutral-500 italic">
+              No actors available. Add actors first.
+            </span>
+          )}
+        </div>
+      </div>
+
+      <div>
+        <label className="block text-sm font-medium text-neutral-700 mb-2">
+          Color
+        </label>
+        <div className="flex flex-wrap gap-2">
+          {COLORS.map((c) => (
+            <button
+              key={c}
+              onClick={() => setColor(c)}
+              className={`w-8 h-8 rounded-full transition-transform ${
+                color === c
+                  ? "scale-110 ring-2 ring-offset-2 ring-neutral-800"
+                  : "hover:scale-110"
+              }`}
+              style={{ backgroundColor: c }}
+              aria-label={`Select color ${c}`}
+            />
+          ))}
+        </div>
+      </div>
+
+      {error && <p className="text-red-500 text-sm">{error}</p>}
+    </Modal>
   );
 }
