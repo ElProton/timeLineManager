@@ -4,6 +4,9 @@ import path from "path";
 import { defineConfig } from "vitest/config";
 
 export default defineConfig({
+  // Set by the GitHub Pages workflow so the demo can be served from a
+  // sub-path. Defaults to '/' for local development and self-hosting.
+  base: process.env.BASE_PATH ?? "/",
   plugins: [react(), tailwindcss()],
   resolve: {
     alias: {

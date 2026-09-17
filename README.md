@@ -1,5 +1,8 @@
 # Timeline Manager
 
+[![CI](https://github.com/ElProton/timeLineManager/actions/workflows/ci.yml/badge.svg)](https://github.com/ElProton/timeLineManager/actions/workflows/ci.yml)
+[![Licence: MIT](https://img.shields.io/badge/licence-MIT-blue.svg)](LICENSE)
+
 Build, time and share a production timeline synchronised to a soundtrack.
 
 Lay out who does what, and when, across a shared time axis: cast and crew, lighting
@@ -14,6 +17,8 @@ lives in your own browser storage and in the JSON file you export.
 > vocabulary and several features are still shaped by that original context — see
 > [ROADMAP.md](ROADMAP.md). Contributions are welcome; read
 > [MAINTENANCE.md](docs/MAINTENANCE.md) first to know what level of support to expect.
+
+**[Try it →](https://elproton.github.io/timeLineManager/)** — nothing to install.
 
 ## Features
 
@@ -70,16 +75,26 @@ React 19, TypeScript, Vite 6, Tailwind CSS 4, Vitest. No backend, no external AP
 
 ## Documentation
 
+- [Development setup](docs/dev_setup.md) — start here
 - [Architecture](docs/architecture.md), [components](docs/components.md),
   [data model](docs/data_model.md), [utilities](docs/utilities.md)
-- [Development setup](docs/dev_setup.md)
+- [Architecture decisions](docs/adr/) and [specifications](docs/specs/)
 - [Roadmap](ROADMAP.md) — what is planned and what is open to contribution
 - [Maintenance policy](docs/MAINTENANCE.md) — how this project is looked after
+- [Security policy](SECURITY.md)
+
+> Parts of `docs/` still describe an earlier state of the code and are being
+> rewritten. `dev_setup.md` is current.
 
 ## Contributing
 
 Contributions are welcome. Start with [CONTRIBUTING.md](CONTRIBUTING.md), and pick an
-issue labelled `good first issue` if you are looking for somewhere to begin.
+issue labelled `good first issue` if you are looking for somewhere to begin. The
+[roadmap](ROADMAP.md) marks the items that need no prior knowledge of the codebase.
+
+**Have three pull requests merged and you can ask for commit access** — see
+[MAINTENANCE.md](docs/MAINTENANCE.md). This project is meant to outlive any single
+maintainer.
 
 ## Licence
 

@@ -1,0 +1,69 @@
+name: Bug report
+description: Something does not work as it should
+labels: ["bug", "needs triage"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for reporting. Before you start, please note that this is a
+        [low-maintenance project](https://github.com/ElProton/timeLineManager/blob/main/docs/MAINTENANCE.md):
+        **a bug report without a pull request may stay open for a long time.**
+        If this blocks you, sending the fix yourself is by far the fastest route —
+        and most of these are small.
+
+  - type: textarea
+    id: what-happens
+    attributes:
+      label: What happens
+      description: What you see, and what you expected instead.
+    validations:
+      required: true
+
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      description: |
+        Numbered steps, starting from a fresh page. If a specific project file is
+        involved, attach it — with anything confidential removed.
+      placeholder: |
+        1. Create a project with a duration of ...
+        2. Add a participant named ...
+        3. ...
+    validations:
+      required: true
+
+  - type: input
+    id: browser
+    attributes:
+      label: Browser and version
+      placeholder: Firefox 142, Chrome 141, Safari 18 ...
+    validations:
+      required: true
+
+  - type: input
+    id: version
+    attributes:
+      label: Version of the app
+      description: The commit or release you are on, or the URL if you use the hosted demo.
+    validations:
+      required: false
+
+  - type: textarea
+    id: console
+    attributes:
+      label: Browser console output
+      description: Open the developer tools, reproduce, and paste anything in red.
+      render: text
+    validations:
+      required: false
+
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Before submitting
+      options:
+        - label: I searched the existing issues and this is not a duplicate.
+          required: true
+        - label: I can reproduce this consistently, not just once.
+          required: true

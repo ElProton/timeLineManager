@@ -62,7 +62,7 @@ Vérifie tes scénarios : "Si l'interface UI change demain, mon scénario est-il
 
 ### 📝 FORMAT DE SORTIE ATTENDU
 
-Ne fournis pas de code (Java/JS/Python). Fournis uniquement de la documentation fonctionnelle structurée ainsi :
+Ne fournis pas de code (TypeScript, JavaScript ou autre). Fournis uniquement de la documentation fonctionnelle structurée ainsi :
 
 1.  **Analyse des Cas :** Une liste à puces rapide des cas identifiés (Nominal, Erreurs, Limites).
 2.  **Fichier Gherkin (.feature) :**

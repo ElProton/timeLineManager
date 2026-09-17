@@ -221,7 +221,7 @@ mainteneur à temps plein.
 | Lot | Objet                                               | Statut         |
 | --- | --------------------------------------------------- | -------------- |
 | 0   | Décontamination et outillage                        | **Livré**      |
-| 1   | Ouverture open-source du dépôt                      | **En cours**   |
+| 1   | Ouverture open-source du dépôt                      | **Livré**      |
 | 2   | Dé-spécialisation : schéma v2 + correction des bugs | Planifié       |
 | 3   | Réécriture documentaire depuis le code réel         | Planifié       |
 | 4   | Fonctionnalités d'adoption                          | Backlog public |
@@ -305,6 +305,23 @@ découpés pour être pris par un contributeur extérieur sans arbitrage du prop
 
 ## 5. Journal des sessions
 
-| Date       | Session          | Livré                                                                                                      |
-| ---------- | ---------------- | ---------------------------------------------------------------------------------------------------------- |
-| 2026-09-17 | Analyse initiale | État des lieux vérifié (tests, build, typage, bugs), décisions D1-D4 actées, ce plan. Lots 0 et 1 engagés. |
+| Date       | Session          | Livré                                                                                                                                                                                                                                        |
+| ---------- | ---------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 2026-09-17 | Analyse initiale | État des lieux vérifié (tests, build, typage, bugs), décisions D1-D4 actées, ce plan.                                                                                                                                                        |
+| 2026-09-17 | Lot 0            | Décontamination AI Studio, BOM purgés, `@types/react` + `strict` (38 erreurs corrigées, dont `ringColor`), ESLint + Prettier + EditorConfig, `npm run verify`.                                                                               |
+| 2026-09-17 | Lot 1            | LICENSE MIT, CI (Node 20/22), déploiement GitHub Pages, CONTRIBUTING / CODE_OF_CONDUCT / SECURITY / MAINTENANCE / ROADMAP, templates issues et PR, Dependabot, ADR-001 récupéré de la PR #1, agents déplacés vers `docs/contrib/ai-agents/`. |
+
+## 6. À faire à la main, hors dépôt
+
+Ces actions ne peuvent pas être réalisées depuis le code et restent à la charge du
+propriétaire du dépôt. Elles sont toutes dans les réglages GitHub.
+
+| Action                                                                 | Où                            | Pourquoi                                                                                                   |
+| ---------------------------------------------------------------------- | ----------------------------- | ---------------------------------------------------------------------------------------------------------- |
+| **Activer GitHub Pages**, source « GitHub Actions »                    | Settings → Pages              | Sans cela le workflow `deploy.yml` échoue et la démo annoncée dans le README renvoie une 404.              |
+| **Activer Discussions**                                                | Settings → General → Features | Le `config.yml` des templates d'issues y redirige les questions d'usage, ce qui les sort du flux d'issues. |
+| **Activer le signalement privé de vulnérabilités**                     | Settings → Security           | `SECURITY.md` pointe vers ce formulaire.                                                                   |
+| **Créer les labels** `good first issue`, `help wanted`, `needs triage` | Issues → Labels               | Référencés par le ROADMAP, CONTRIBUTING et les templates.                                                  |
+| **Mettre à jour la description et les sujets du dépôt**                | Page d'accueil du dépôt       | La description est encore « manage timeline to schedule show ».                                            |
+| **Fermer la PR #1** en renvoyant vers `docs/adr/001-layer-system.md`   | PR #1                         | L'ADR est conservé ; le code est périmé. À faire après fusion du lot 1.                                    |
+| _(optionnel)_ Protéger `main` : CI verte obligatoire                   | Settings → Branches           | Évite qu'une fusion casse `main` sans que personne ne s'en aperçoive.                                      |

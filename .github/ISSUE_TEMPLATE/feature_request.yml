@@ -1,0 +1,66 @@
+name: Feature request
+description: Suggest something the tool should be able to do
+labels: ["enhancement", "needs triage"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Please check [the roadmap](https://github.com/ElProton/timeLineManager/blob/main/ROADMAP.md)
+        first — it may already be listed, in which case comment there instead.
+
+        Be aware that **nobody is assigned to build feature requests**. A request is
+        labelled and added to the roadmap; it gets built when someone builds it. See
+        [the maintenance policy](https://github.com/ElProton/timeLineManager/blob/main/docs/MAINTENANCE.md).
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: What are you trying to do?
+      description: |
+        Describe the situation, not the solution. What are you producing, and where
+        does the tool get in your way today? This is the most useful part of the
+        request by a wide margin.
+    validations:
+      required: true
+
+  - type: textarea
+    id: solution
+    attributes:
+      label: What would solve it
+      description: Optional. If you have a solution in mind, describe it here.
+    validations:
+      required: false
+
+  - type: dropdown
+    id: generic
+    attributes:
+      label: Who else would use this?
+      description: |
+        This project is deliberately kept generic across trades. Features that only
+        make sense for one industry are accepted as options, not as defaults.
+      options:
+        - Anyone building a timeline, whatever their trade
+        - Several trades, but not all
+        - Mainly my own line of work
+    validations:
+      required: true
+
+  - type: checkboxes
+    id: constraints
+    attributes:
+      label: Constraints
+      description: |
+        The app runs entirely in the browser: no backend, no accounts, no telemetry,
+        no network calls. This is a hard rule — it is what keeps the project free to
+        run and possible to maintain.
+      options:
+        - label: This can work without a server, an account or any network call.
+          required: true
+
+  - type: checkboxes
+    id: contribute
+    attributes:
+      label: Would you be willing to work on this?
+      options:
+        - label: I would be willing to open a pull request for it, with guidance if needed.
+          required: false

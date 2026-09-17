@@ -260,10 +260,10 @@ Si la validation échoue → `clearCachedProject()` + return `null`.
 
 > **Fichiers/Modules de référence :**
 >
-> - [src/utils/time.ts](../src/utils/time.ts) — pattern à suivre pour le module utilitaire (fonctions pures exportées)
-> - [src/App.tsx](../src/App.tsx) — composant racine, point d'intégration du `useEffect` et du state
-> - [src/components/ProjectInit.tsx](../src/components/ProjectInit.tsx) — écran d'initialisation à enrichir avec le bandeau de restauration
-> - [src/types.ts](../src/types.ts) — interface `ProjectData` utilisée pour la sérialisation/validation
+> - [src/utils/time.ts](../../src/utils/time.ts) — pattern à suivre pour le module utilitaire (fonctions pures exportées)
+> - [src/App.tsx](../../src/App.tsx) — composant racine, point d'intégration du `useEffect` et du state
+> - [src/components/ProjectInit.tsx](../../src/components/ProjectInit.tsx) — écran d'initialisation à enrichir avec le bandeau de restauration
+> - [src/types.ts](../../src/types.ts) — interface `ProjectData` utilisée pour la sérialisation/validation
 
 > **Pièges à éviter :**
 >
