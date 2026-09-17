@@ -341,6 +341,7 @@ export default function App() {
                 seek: audio.seek,
               }}
               onEditCue={(cue) => modals.openCueModal(cue)}
+              onMoveCue={project.saveCue}
               onDeleteCue={handleDeleteCue}
               onEditTrack={(track) => modals.openTrackModal(track)}
               onDeleteTrack={handleDeleteTrack}

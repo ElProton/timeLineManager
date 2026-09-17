@@ -67,6 +67,10 @@ export function AudioBar({
 
     const onKeyDown = (event: KeyboardEvent) => {
       if (event.altKey || event.ctrlKey || event.metaKey) return;
+      // A focused cue answers the arrow keys itself, to retime itself. It is a
+      // `div` with `role="button"`, so `isTypingTarget` cannot recognise it —
+      // but it calls `preventDefault`, and that is unambiguous.
+      if (event.defaultPrevented) return;
       if (isTypingTarget(event.target)) return;
 
       if (event.key === " ") {
