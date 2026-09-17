@@ -1,7 +1,7 @@
-﻿import { describe, it, expect } from "vitest";
+import { describe, it, expect } from "vitest";
 import { renderHook, act } from "@testing-library/react";
 import { useModals } from "../hooks/useModals";
-import { Action, Actor } from "../types";
+import type { Action, Actor } from "../types";
 
 const mockAction: Action = {
   id: "act1",

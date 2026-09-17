@@ -1,5 +1,5 @@
-﻿import React, { useState, useEffect } from "react";
-import { ProjectMetadata } from "../types";
+import { useState, useEffect } from "react";
+import type { ProjectMetadata } from "../types";
 import { parseTime, formatTime, isValidTimeFormat } from "../utils/time";
 import { Modal } from "./Modal";
 
@@ -100,7 +100,12 @@ export function MetadataModal({
   );
 
   return (
-    <Modal isOpen={isOpen} onClose={onClose} title="Project Settings" footer={footer}>
+    <Modal
+      isOpen={isOpen}
+      onClose={onClose}
+      title="Project Settings"
+      footer={footer}
+    >
       <div>
         <label className="block text-sm font-medium text-neutral-700 mb-1">
           Project Title

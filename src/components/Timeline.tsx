@@ -1,5 +1,6 @@
-import React, { useState } from "react";
-import { ProjectData, Action, Actor } from "../types";
+import { forwardRef, useState } from "react";
+import type { CSSProperties } from "react";
+import type { ProjectData, Action, Actor } from "../types";
 import { formatTime } from "../utils/time";
 import { Edit2, Trash2 } from "lucide-react";
 import { cn } from "../utils/cn";
@@ -13,7 +14,7 @@ interface Props {
   onDeleteActor: (actorId: string) => void;
 }
 
-export const Timeline = React.forwardRef<HTMLDivElement, Props>(
+export const Timeline = forwardRef<HTMLDivElement, Props>(
   (
     {
       data,
@@ -35,7 +36,7 @@ export const Timeline = React.forwardRef<HTMLDivElement, Props>(
       : actors;
 
     // Generate time markers every 30 seconds or 1 minute depending on duration
-    const markers = [];
+    const markers: number[] = [];
     const step = durationSeconds > 600 ? 60 : 30; // 1 min or 30 sec
     for (let i = 0; i <= durationSeconds; i += step) {
       markers.push(i);
@@ -154,14 +155,16 @@ export const Timeline = React.forwardRef<HTMLDivElement, Props>(
                               ? "ring-2 ring-offset-1 z-20"
                               : "z-10 hover:z-20",
                           )}
-                          style={{
-                            left,
-                            width,
-                            backgroundColor: `${action.color}20`,
-                            borderColor: action.color,
-                            color: action.color,
-                            ringColor: action.color,
-                          }}
+                          style={
+                            {
+                              left,
+                              width,
+                              backgroundColor: `${action.color}20`,
+                              borderColor: action.color,
+                              color: action.color,
+                              "--tw-ring-color": action.color,
+                            } as CSSProperties
+                          }
                           onMouseEnter={() => setHoveredActionId(action.id)}
                           onMouseLeave={() => setHoveredActionId(null)}
                           onClick={() => onEditAction(action)}
@@ -218,3 +221,5 @@ export const Timeline = React.forwardRef<HTMLDivElement, Props>(
     );
   },
 );
+
+Timeline.displayName = "Timeline";

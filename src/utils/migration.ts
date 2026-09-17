@@ -1,4 +1,4 @@
-﻿import { CURRENT_SCHEMA_VERSION } from "../types";
+import { CURRENT_SCHEMA_VERSION } from "../types";
 
 /**
  * Migrates raw parsed JSON from any previous schema version to the current version.

@@ -1,4 +1,4 @@
-﻿# Composants React
+# Composants React
 
 ## Arbre des composants
 
@@ -33,18 +33,19 @@ Composant racine. Gère l'intégralité du state applicatif et expose les handle
 
 ### Handlers exposés
 
-| Handler              | Signature                          | Description                                                    |
-|----------------------|------------------------------------|----------------------------------------------------------------|
-| `handleSaveJson`     | `() => void`                       | Sérialise `projectData` en JSON et déclenche un téléchargement |
-| `handleExportImage`  | `() => Promise<void>`              | Capture le DOM de la timeline en JPEG                          |
-| `handleSaveAction`   | `(action: Action) => void`         | Crée ou met à jour une action (upsert par `id`)               |
-| `handleDeleteAction` | `(actionId: string) => void`       | Supprime une action après confirmation                         |
-| `handleSaveActor`    | `(actor: Actor) => void`           | Crée ou met à jour un acteur (upsert par `id`)                |
-| `handleDeleteActor`  | `(actorId: string) => void`        | Supprime un acteur + cascade sur les actions                   |
+| Handler              | Signature                    | Description                                                    |
+| -------------------- | ---------------------------- | -------------------------------------------------------------- |
+| `handleSaveJson`     | `() => void`                 | Sérialise `projectData` en JSON et déclenche un téléchargement |
+| `handleExportImage`  | `() => Promise<void>`        | Capture le DOM de la timeline en JPEG                          |
+| `handleSaveAction`   | `(action: Action) => void`   | Crée ou met à jour une action (upsert par `id`)                |
+| `handleDeleteAction` | `(actionId: string) => void` | Supprime une action après confirmation                         |
+| `handleSaveActor`    | `(actor: Actor) => void`     | Crée ou met à jour un acteur (upsert par `id`)                 |
+| `handleDeleteActor`  | `(actorId: string) => void`  | Supprime un acteur + cascade sur les actions                   |
 
 ### Logique de suppression d'acteur (cascade)
 
 Lors de la suppression d'un acteur :
+
 1. L'`actorId` est retiré de tous les `actorIds` de chaque action.
 2. Les actions dont `actorIds` devient vide sont supprimées.
 3. Si l'acteur supprimé était le filtre actif, le filtre est réinitialisé.
@@ -59,13 +60,14 @@ Lors de la suppression d'un acteur :
 
 ### Props
 
-| Prop     | Type                            | Description                                |
-|----------|---------------------------------|--------------------------------------------|
-| `onInit` | `(data: ProjectData) => void`   | Callback d'hydratation du projet           |
+| Prop     | Type                          | Description                      |
+| -------- | ----------------------------- | -------------------------------- |
+| `onInit` | `(data: ProjectData) => void` | Callback d'hydratation du projet |
 
 ### Création manuelle
 
 Formulaire avec trois champs :
+
 - **Project Title** → `metadata.title`
 - **Music Track Name** → `metadata.musicName`
 - **Total Duration** (mm:ss) → `metadata.durationSeconds`
@@ -86,14 +88,14 @@ Composant principal de visualisation. Utilise `React.forwardRef` pour permettre 
 
 ### Props
 
-| Prop              | Type                              | Description                              |
-|-------------------|-----------------------------------|------------------------------------------|
-| `data`            | `ProjectData`                     | Données complètes du projet              |
-| `filteredActorId` | `string \| null`                  | ID de l'acteur filtré (null = tous)      |
-| `onEditAction`    | `(action: Action) => void`        | Ouvre le modal d'édition d'action        |
-| `onDeleteAction`  | `(actionId: string) => void`      | Supprime une action                      |
-| `onEditActor`     | `(actor: Actor) => void`          | Ouvre le modal d'édition d'acteur        |
-| `onDeleteActor`   | `(actorId: string) => void`       | Supprime un acteur                       |
+| Prop              | Type                         | Description                         |
+| ----------------- | ---------------------------- | ----------------------------------- |
+| `data`            | `ProjectData`                | Données complètes du projet         |
+| `filteredActorId` | `string \| null`             | ID de l'acteur filtré (null = tous) |
+| `onEditAction`    | `(action: Action) => void`   | Ouvre le modal d'édition d'action   |
+| `onDeleteAction`  | `(actionId: string) => void` | Supprime une action                 |
+| `onEditActor`     | `(actor: Actor) => void`     | Ouvre le modal d'édition d'acteur   |
+| `onDeleteActor`   | `(actorId: string) => void`  | Supprime un acteur                  |
 
 ### Structure du rendu
 
@@ -110,6 +112,7 @@ Composant principal de visualisation. Utilise `React.forwardRef` pour permettre 
 ### Calcul des positions
 
 Les blocs d'action sont positionnés en CSS `absolute` :
+
 - `left` = `(action.timeStart / durationSeconds) * 100%`
 - `width` = `((action.timeEnd - action.timeStart) / durationSeconds) * 100%`
 
@@ -137,24 +140,24 @@ Modal de création/édition d'une action.
 
 ### Props
 
-| Prop            | Type                          | Description                                  |
-|-----------------|-------------------------------|----------------------------------------------|
-| `isOpen`        | `boolean`                     | Contrôle de visibilité                       |
-| `onClose`       | `() => void`                  | Fermeture du modal                           |
-| `onSave`        | `(action: Action) => void`    | Callback de sauvegarde                       |
-| `initialAction` | `Action \| null \| undefined` | Action existante (édition) ou null (création)|
-| `actors`        | `Actor[]`                     | Liste des acteurs disponibles                |
-| `maxDuration`   | `number`                      | Durée max en secondes (borne de validation)  |
+| Prop            | Type                          | Description                                   |
+| --------------- | ----------------------------- | --------------------------------------------- |
+| `isOpen`        | `boolean`                     | Contrôle de visibilité                        |
+| `onClose`       | `() => void`                  | Fermeture du modal                            |
+| `onSave`        | `(action: Action) => void`    | Callback de sauvegarde                        |
+| `initialAction` | `Action \| null \| undefined` | Action existante (édition) ou null (création) |
+| `actors`        | `Actor[]`                     | Liste des acteurs disponibles                 |
+| `maxDuration`   | `number`                      | Durée max en secondes (borne de validation)   |
 
 ### Champs du formulaire
 
-| Champ          | Type            | Validation                                      |
-|----------------|-----------------|--------------------------------------------------|
-| Description    | `text`          | Requis, non vide                                 |
-| Start Time     | `text` (mm:ss)  | Format mm:ss, < endTime, ≥ 00:00                |
-| End Time       | `text` (mm:ss)  | Format mm:ss, > startTime, ≤ maxDuration         |
-| Actors         | Multi-select    | Au moins 1 acteur sélectionné                    |
-| Color          | Color picker    | Sélection parmi 10 couleurs prédéfinies          |
+| Champ       | Type           | Validation                               |
+| ----------- | -------------- | ---------------------------------------- |
+| Description | `text`         | Requis, non vide                         |
+| Start Time  | `text` (mm:ss) | Format mm:ss, < endTime, ≥ 00:00         |
+| End Time    | `text` (mm:ss) | Format mm:ss, > startTime, ≤ maxDuration |
+| Actors      | Multi-select   | Au moins 1 acteur sélectionné            |
+| Color       | Color picker   | Sélection parmi 10 couleurs prédéfinies  |
 
 ### Comportement
 
@@ -172,15 +175,15 @@ Modal de création/édition d'un acteur.
 
 ### Props
 
-| Prop           | Type                          | Description                                  |
-|----------------|-------------------------------|----------------------------------------------|
-| `isOpen`       | `boolean`                     | Contrôle de visibilité                       |
-| `onClose`      | `() => void`                  | Fermeture du modal                           |
-| `onSave`       | `(actor: Actor) => void`      | Callback de sauvegarde                       |
-| `initialActor` | `Actor \| null \| undefined`  | Acteur existant (édition) ou null (création) |
+| Prop           | Type                         | Description                                  |
+| -------------- | ---------------------------- | -------------------------------------------- |
+| `isOpen`       | `boolean`                    | Contrôle de visibilité                       |
+| `onClose`      | `() => void`                 | Fermeture du modal                           |
+| `onSave`       | `(actor: Actor) => void`     | Callback de sauvegarde                       |
+| `initialActor` | `Actor \| null \| undefined` | Acteur existant (édition) ou null (création) |
 
 ### Champ unique
 
-| Champ      | Type   | Validation           |
-|------------|--------|----------------------|
+| Champ      | Type   | Validation                 |
+| ---------- | ------ | -------------------------- |
 | Actor Name | `text` | Requis, non vide (trimmed) |

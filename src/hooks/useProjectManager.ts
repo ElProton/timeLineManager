@@ -1,5 +1,5 @@
-﻿import { useState, useReducer, useEffect } from "react";
-import { ProjectData, ProjectMetadata, Action, Actor } from "../types";
+import { useState, useReducer, useEffect } from "react";
+import type { ProjectData, ProjectMetadata, Action, Actor } from "../types";
 import {
   saveCachedProject,
   loadCachedProject,

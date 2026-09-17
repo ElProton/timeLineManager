@@ -1,4 +1,4 @@
-﻿# Fonctions Utilitaires
+# Fonctions Utilitaires
 
 ## `cn` — Merge de classes CSS
 
@@ -37,7 +37,7 @@ formatTime(seconds: number): string
 Convertit un nombre de secondes en chaîne `mm:ss` (zéro-paddé).
 
 | Entrée | Sortie    |
-|--------|-----------|
+| ------ | --------- |
 | `0`    | `"00:00"` |
 | `75`   | `"01:15"` |
 | `600`  | `"10:00"` |
@@ -51,7 +51,7 @@ parseTime(timeStr: string): number
 Convertit une chaîne `mm:ss` en nombre de secondes. Retourne `0` si le format est invalide.
 
 | Entrée    | Sortie |
-|-----------|--------|
+| --------- | ------ |
 | `"01:15"` | `75`   |
 | `"10:00"` | `600`  |
 | `"abc"`   | `0`    |
@@ -64,11 +64,11 @@ isValidTimeFormat(timeStr: string): boolean
 
 Valide qu'une chaîne respecte le format `mm:ss` via la regex `/^\d{2,}:\d{2}$/`.
 
-| Entrée    | Sortie  |
-|-----------|---------|
-| `"01:15"` | `true`  |
-| `"100:00"`| `true`  |
-| `"1:5"`   | `false` |
-| `"ab:cd"` | `false` |
+| Entrée     | Sortie  |
+| ---------- | ------- |
+| `"01:15"`  | `true`  |
+| `"100:00"` | `true`  |
+| `"1:5"`    | `false` |
+| `"ab:cd"`  | `false` |
 
 > **Note :** la regex accepte les minutes à plus de 2 chiffres (`100:00`), mais les secondes doivent être exactement 2 chiffres. Aucune validation de borne (ex: `99:99` est considéré valide par le format).

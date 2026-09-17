@@ -1,11 +1,11 @@
-﻿import { describe, it, expect, beforeEach, vi } from "vitest";
+import { describe, it, expect, beforeEach, vi } from "vitest";
 import {
   isCacheAvailable,
   saveCachedProject,
   loadCachedProject,
   clearCachedProject,
 } from "../utils/storage";
-import { ProjectData } from "../types";
+import type { ProjectData } from "../types";
 
 const validProject: ProjectData = {
   schemaVersion: 1,
@@ -79,10 +79,7 @@ describe("storage", () => {
     });
 
     it("returns null and clears cache for invalid structure", () => {
-      localStorage.setItem(
-        "stm_project_cache",
-        JSON.stringify({ foo: "bar" }),
-      );
+      localStorage.setItem("stm_project_cache", JSON.stringify({ foo: "bar" }));
       expect(loadCachedProject()).toBeNull();
       expect(localStorage.getItem("stm_project_cache")).toBeNull();
     });

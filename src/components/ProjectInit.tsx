@@ -1,5 +1,7 @@
-import React, { useState } from "react";
-import { ProjectData, CURRENT_SCHEMA_VERSION } from "../types";
+import { useState } from "react";
+import type { FormEvent, ChangeEvent } from "react";
+import { CURRENT_SCHEMA_VERSION } from "../types";
+import type { ProjectData } from "../types";
 import { parseTime, formatTime, isValidTimeFormat } from "../utils/time";
 import { migrateProject } from "../utils/migration";
 import { Upload, Plus, RotateCcw } from "lucide-react";
@@ -16,7 +18,7 @@ export function ProjectInit({ onInit, cachedProject }: Props) {
   const [durationStr, setDurationStr] = useState("");
   const [error, setError] = useState("");
 
-  const handleCreate = (e: React.FormEvent) => {
+  const handleCreate = (e: FormEvent) => {
     e.preventDefault();
     setError("");
 
@@ -44,7 +46,7 @@ export function ProjectInit({ onInit, cachedProject }: Props) {
     });
   };
 
-  const handleImport = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleImport = (e: ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
@@ -65,7 +67,7 @@ export function ProjectInit({ onInit, cachedProject }: Props) {
         }
 
         onInit(data);
-      } catch (err) {
+      } catch {
         alert("Invalid file format or corrupted JSON.");
       }
     };

@@ -1,7 +1,7 @@
-﻿import { describe, it, expect, vi, beforeEach } from "vitest";
+import { describe, it, expect, vi, beforeEach } from "vitest";
 import { renderHook, act } from "@testing-library/react";
 import { useExport } from "../hooks/useExport";
-import { ProjectData } from "../types";
+import type { ProjectData } from "../types";
 
 // Mock html-to-image
 vi.mock("html-to-image", () => ({
@@ -25,11 +25,15 @@ describe("useExport", () => {
 
     createObjectURLMock = vi.fn(() => "blob:fake-url");
     revokeObjectURLMock = vi.fn();
-    global.URL.createObjectURL = createObjectURLMock as unknown as typeof URL.createObjectURL;
-    global.URL.revokeObjectURL = revokeObjectURLMock as unknown as typeof URL.revokeObjectURL;
+    global.URL.createObjectURL =
+      createObjectURLMock as unknown as typeof URL.createObjectURL;
+    global.URL.revokeObjectURL =
+      revokeObjectURLMock as unknown as typeof URL.revokeObjectURL;
 
     clickSpy = vi.fn();
-    vi.spyOn(HTMLAnchorElement.prototype, "click").mockImplementation(clickSpy as () => void);
+    vi.spyOn(HTMLAnchorElement.prototype, "click").mockImplementation(
+      clickSpy as () => void,
+    );
   });
 
   it("provides a timelineRef", () => {

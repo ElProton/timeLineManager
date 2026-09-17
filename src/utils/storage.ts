@@ -1,4 +1,4 @@
-﻿import { ProjectData } from "../types";
+import type { ProjectData } from "../types";
 import { migrateProject } from "./migration";
 
 const STORAGE_KEY = "stm_project_cache";
@@ -84,7 +84,10 @@ function isValidProjectData(data: unknown): data is ProjectData {
 
   const candidate = data as Record<string, unknown>;
 
-  if (typeof candidate.schemaVersion !== "number" || candidate.schemaVersion < 1) {
+  if (
+    typeof candidate.schemaVersion !== "number" ||
+    candidate.schemaVersion < 1
+  ) {
     return false;
   }
 
@@ -97,7 +100,10 @@ function isValidProjectData(data: unknown): data is ProjectData {
     return false;
   }
   if (typeof metadata.musicName !== "string") return false;
-  if (typeof metadata.durationSeconds !== "number" || metadata.durationSeconds <= 0) {
+  if (
+    typeof metadata.durationSeconds !== "number" ||
+    metadata.durationSeconds <= 0
+  ) {
     return false;
   }
 

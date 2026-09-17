@@ -1,5 +1,5 @@
-﻿import { useState, useCallback } from "react";
-import { Action, Actor } from "../types";
+import { useState, useCallback } from "react";
+import type { Action, Actor } from "../types";
 
 export function useModals() {
   const [isActionModalOpen, setIsActionModalOpen] = useState(false);

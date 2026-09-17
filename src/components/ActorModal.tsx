@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from "react";
-import { Actor } from "../types";
+import { useState, useEffect } from "react";
+import type { Actor } from "../types";
 import { Modal } from "./Modal";
 
 interface Props {

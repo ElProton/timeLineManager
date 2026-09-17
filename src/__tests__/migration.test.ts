@@ -1,4 +1,4 @@
-﻿import { describe, it, expect, vi } from "vitest";
+import { describe, it, expect, vi } from "vitest";
 import { migrateProject } from "../utils/migration";
 import { CURRENT_SCHEMA_VERSION } from "../types";
 

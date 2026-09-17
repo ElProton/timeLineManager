@@ -1,4 +1,4 @@
-﻿# Architecture Applicative
+# Architecture Applicative
 
 ## Vue d'ensemble
 
@@ -24,18 +24,18 @@
 
 ## Stack Technique
 
-| Couche          | Technologie                      | Version  |
-|-----------------|----------------------------------|----------|
-| Runtime         | React 19 (StrictMode)            | ^19.0.0  |
-| Langage         | TypeScript                       | ~5.8.2   |
-| Build           | Vite 6                           | ^6.2.0   |
-| Styling         | Tailwind CSS 4 (plugin Vite)     | ^4.1.14  |
-| Icônes          | Lucide React                     | ^0.546.0 |
-| Animations      | Motion                           | ^12.23.24|
-| Export image    | html-to-image                    | ^1.11.13 |
-| CSS Utilities   | clsx + tailwind-merge            | —        |
+| Couche        | Technologie                  | Version   |
+| ------------- | ---------------------------- | --------- |
+| Runtime       | React 19 (StrictMode)        | ^19.0.0   |
+| Langage       | TypeScript                   | ~5.8.2    |
+| Build         | Vite 6                       | ^6.2.0    |
+| Styling       | Tailwind CSS 4 (plugin Vite) | ^4.1.14   |
+| Icônes        | Lucide React                 | ^0.546.0  |
+| Animations    | Motion                       | ^12.23.24 |
+| Export image  | html-to-image                | ^1.11.13  |
+| CSS Utilities | clsx + tailwind-merge        | —         |
 
-> **Note :** Les dépendances `@google/genai`, `better-sqlite3`, `express`, `dotenv` sont présentes dans `package.json` mais **non utilisées** dans le code source actuel. Elles sont probablement des résidus du scaffold Google AI Studio.
+> **Note :** Le projet n'a aucune dépendance de runtime au-delà de celles listées ci-dessus. Les résidus du scaffold Google AI Studio (`@google/genai`, `better-sqlite3`, `express`, `dotenv`, `metadata.json`, `.env.example`) ont été retirés.
 
 ## Flux de données
 
@@ -77,15 +77,15 @@ L'application suit un pattern **state-lifting** classique sans store externe.
 
 ## Gestion du State
 
-| State              | Type                   | Portée | Rôle                                         |
-|--------------------|------------------------|--------|----------------------------------------------|
-| `projectData`      | `ProjectData \| null`  | App    | Source de vérité unique du projet             |
-| `filteredActorId`  | `string \| null`       | App    | Filtre acteur actif sur la timeline           |
-| `isActionModalOpen`| `boolean`              | App    | Contrôle d'affichage du modal Action          |
-| `isActorModalOpen` | `boolean`              | App    | Contrôle d'affichage du modal Actor           |
-| `editingAction`    | `Action \| null`       | App    | Action en cours d'édition (null = création)   |
-| `editingActor`     | `Actor \| null`        | App    | Acteur en cours d'édition (null = création)   |
-| `hoveredActionId`  | `string \| null`       | Timeline| Survol pour highlight multi-acteur           |
+| State               | Type                  | Portée   | Rôle                                        |
+| ------------------- | --------------------- | -------- | ------------------------------------------- |
+| `projectData`       | `ProjectData \| null` | App      | Source de vérité unique du projet           |
+| `filteredActorId`   | `string \| null`      | App      | Filtre acteur actif sur la timeline         |
+| `isActionModalOpen` | `boolean`             | App      | Contrôle d'affichage du modal Action        |
+| `isActorModalOpen`  | `boolean`             | App      | Contrôle d'affichage du modal Actor         |
+| `editingAction`     | `Action \| null`      | App      | Action en cours d'édition (null = création) |
+| `editingActor`      | `Actor \| null`       | App      | Acteur en cours d'édition (null = création) |
+| `hoveredActionId`   | `string \| null`      | Timeline | Survol pour highlight multi-acteur          |
 
 ## Pattern d'import/export
 
@@ -95,14 +95,16 @@ Le format de persistance est un fichier JSON conforme à l'interface `ProjectDat
 {
   "metadata": { "title": "...", "musicName": "...", "durationSeconds": 900 },
   "actors": [{ "id": "uuid", "name": "Pierre" }],
-  "actions": [{
-    "id": "uuid",
-    "description": "Entrée côté cour",
-    "timeStart": 30,
-    "timeEnd": 120,
-    "actorIds": ["uuid-1", "uuid-2"],
-    "color": "#3b82f6"
-  }]
+  "actions": [
+    {
+      "id": "uuid",
+      "description": "Entrée côté cour",
+      "timeStart": 30,
+      "timeEnd": 120,
+      "actorIds": ["uuid-1", "uuid-2"],
+      "color": "#3b82f6"
+    }
+  ]
 }
 ```
 

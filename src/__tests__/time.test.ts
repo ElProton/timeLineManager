@@ -1,4 +1,4 @@
-﻿import { describe, it, expect } from "vitest";
+import { describe, it, expect } from "vitest";
 import { formatTime, parseTime, isValidTimeFormat } from "../utils/time";
 
 describe("formatTime", () => {

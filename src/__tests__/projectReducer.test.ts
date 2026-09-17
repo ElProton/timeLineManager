@@ -1,10 +1,10 @@
-﻿import { describe, it, expect } from "vitest";
+import { describe, it, expect } from "vitest";
 import {
   projectReducer,
   initialState,
-  ProjectState,
+  type ProjectState,
 } from "../hooks/projectReducer";
-import { ProjectData, Action, Actor } from "../types";
+import type { ProjectData, Action, Actor } from "../types";
 
 const baseProject: ProjectData = {
   schemaVersion: 1,

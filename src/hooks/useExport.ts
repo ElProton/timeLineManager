@@ -1,5 +1,5 @@
-﻿import { useRef, useCallback } from "react";
-import { ProjectData } from "../types";
+import { useRef, useCallback } from "react";
+import type { ProjectData } from "../types";
 import * as htmlToImage from "html-to-image";
 
 export function useExport(projectData: ProjectData | null) {

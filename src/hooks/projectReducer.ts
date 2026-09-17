@@ -1,4 +1,4 @@
-﻿import { ProjectData, ProjectMetadata, Action, Actor } from "../types";
+import type { ProjectData, ProjectMetadata, Action, Actor } from "../types";
 
 const MAX_HISTORY = 50;
 
@@ -45,7 +45,10 @@ export const initialState: ProjectState = {
 // Helper: push current snapshot to history before mutating
 // ---------------------------------------------------------------------------
 
-function pushToHistory(past: ProjectData[], current: ProjectData): ProjectData[] {
+function pushToHistory(
+  past: ProjectData[],
+  current: ProjectData,
+): ProjectData[] {
   return [...past, current].slice(-MAX_HISTORY);
 }
 

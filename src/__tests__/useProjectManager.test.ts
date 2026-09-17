@@ -1,7 +1,7 @@
-﻿import { describe, it, expect, beforeEach, vi } from "vitest";
+import { describe, it, expect, beforeEach, vi } from "vitest";
 import { renderHook, act } from "@testing-library/react";
 import { useProjectManager } from "../hooks/useProjectManager";
-import { ProjectData, Action, Actor } from "../types";
+import type { ProjectData, Action, Actor } from "../types";
 
 // Mock storage module
 vi.mock("../utils/storage", () => ({
@@ -95,11 +95,16 @@ describe("useProjectManager", () => {
       const { result } = renderHook(() => useProjectManager());
       act(() => result.current.initProject(mockProject));
 
-      const updated: Action = { ...mockProject.actions[0], description: "Updated" };
+      const updated: Action = {
+        ...mockProject.actions[0],
+        description: "Updated",
+      };
       act(() => result.current.saveAction(updated));
 
       expect(result.current.projectData!.actions).toHaveLength(2);
-      expect(result.current.projectData!.actions[0].description).toBe("Updated");
+      expect(result.current.projectData!.actions[0].description).toBe(
+        "Updated",
+      );
     });
   });
 
@@ -178,7 +183,11 @@ describe("useProjectManager", () => {
       const { result } = renderHook(() => useProjectManager());
       act(() => result.current.initProject(mockProject));
 
-      const newMeta = { title: "New", musicName: "Track", durationSeconds: 300 };
+      const newMeta = {
+        title: "New",
+        musicName: "Track",
+        durationSeconds: 300,
+      };
       act(() => result.current.saveMetadata(newMeta, false));
 
       expect(result.current.projectData!.metadata).toEqual(newMeta);
@@ -219,7 +228,11 @@ describe("useProjectManager", () => {
       };
       act(() => result.current.initProject(project));
 
-      const newMeta = { title: "Show", musicName: "Song", durationSeconds: 100 };
+      const newMeta = {
+        title: "Show",
+        musicName: "Song",
+        durationSeconds: 100,
+      };
       act(() => result.current.saveMetadata(newMeta, true));
 
       // act3 starts at 170 >= 100, should be removed

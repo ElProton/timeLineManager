@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from "react";
-import { Action, Actor } from "../types";
+import { useState, useEffect } from "react";
+import type { Action, Actor } from "../types";
 import { parseTime, formatTime, isValidTimeFormat } from "../utils/time";
 import { Modal } from "./Modal";
 
