@@ -1,13 +1,13 @@
-# Modèle de Données
+# Data model
 
-## Diagramme des types
+## Type diagram
 
 ```
 ProjectData
 ├── schemaVersion: number
 ├── metadata: ProjectMetadata
 │     ├── title: string
-│     ├── soundtrack?: string     (facultatif)
+│     ├── soundtrack?: string     (optional)
 │     └── durationSeconds: number
 ├── tracks: Track[]
 │     ├── id: string (UUID)
@@ -15,128 +15,126 @@ ProjectData
 └── cues: Cue[]
       ├── id: string (UUID)
       ├── description: string
-      ├── timeStart: number (secondes)
-      ├── timeEnd: number (secondes)
+      ├── timeStart: number (seconds)
+      ├── timeEnd: number (seconds)
       ├── trackIds: string[] (refs → Track.id)
       └── color: string (hex)
 ```
 
-Fichier source : [src/types.ts](../src/types.ts)
+Source: [src/types.ts](../src/types.ts)
 
-## Vocabulaire
+## Vocabulary
 
-Le schéma v1 employait le vocabulaire du spectacle vivant : un `Actor` exécutait des
-`Action`. Ces termes ne voyageaient pas hors du théâtre — un pupitre lumière, un
-essaim de drones ou un traiteur ne sont pas des « acteurs ». Le v2 emploie des termes
-que tous les métiers concernés reconnaissent.
+Schema v1 used the vocabulary of live show production: an `Actor` performed
+`Action`s. Those terms did not travel outside the theatre — a lighting desk, a
+drone swarm and a caterer are not "actors". v2 uses terms every affected trade
+recognises.
 
-| Concept | Définition                                                                    |
-| ------- | ----------------------------------------------------------------------------- |
-| `Track` | Une ligne de la timeline : une personne, une équipe, un appareil, un circuit. |
-| `Cue`   | Un bloc temporel posé sur une ou plusieurs pistes. « Top », en régie.         |
+| Concept | Meaning                                                                                                   |
+| ------- | --------------------------------------------------------------------------------------------------------- |
+| `Track` | A row of the timeline: a person, a team, a device, a channel.                                             |
+| `Cue`   | A timed block sitting on one or more tracks. The standard term in live performance, broadcast and events. |
 
-## Interfaces TypeScript
+## TypeScript interfaces
 
 ### `ProjectMetadata`
 
-| Propriété         | Type      | Description                                                                                                                     |
-| ----------------- | --------- | ------------------------------------------------------------------------------------------------------------------------------- |
-| `title`           | `string`  | Nom du projet. Requis, non vide.                                                                                                |
-| `soundtrack`      | `string?` | **Facultatif.** Bande son de référence. Absent si le calage se fait sur une voix off, un time-code vidéo ou un simple minutage. |
-| `durationSeconds` | `number`  | Durée totale. Strictement positive, plafonnée à `MAX_DURATION_SECONDS` (12 h).                                                  |
+| Property          | Type      | Description                                                                                                                              |
+| ----------------- | --------- | ---------------------------------------------------------------------------------------------------------------------------------------- |
+| `title`           | `string`  | Project name. Required, non-blank.                                                                                                       |
+| `soundtrack`      | `string?` | **Optional.** The reference recording. Absent when the timeline is built against a voice-over, a video timecode or a plain running time. |
+| `durationSeconds` | `number`  | Total length. Strictly positive, capped at `MAX_DURATION_SECONDS` (12 hours).                                                            |
 
 ### `Track`
 
-| Propriété | Type     | Description                                                        |
-| --------- | -------- | ------------------------------------------------------------------ |
-| `id`      | `string` | Identifiant unique (`crypto.randomUUID()`). Unique dans le projet. |
-| `name`    | `string` | Libellé affiché en tête de ligne.                                  |
+| Property | Type     | Description                                                   |
+| -------- | -------- | ------------------------------------------------------------- |
+| `id`     | `string` | Unique id (`crypto.randomUUID()`). Unique within the project. |
+| `name`   | `string` | Label shown at the head of the row.                           |
 
 ### `Cue`
 
-| Propriété     | Type       | Description                                               |
+| Property      | Type       | Description                                               |
 | ------------- | ---------- | --------------------------------------------------------- |
-| `id`          | `string`   | Identifiant unique (UUID v4).                             |
-| `description` | `string`   | Libellé affiché sur le bloc.                              |
-| `timeStart`   | `number`   | Début en secondes, inclus. `>= 0`.                        |
-| `timeEnd`     | `number`   | Fin en secondes, exclue. Strictement `> timeStart`.       |
-| `trackIds`    | `string[]` | Pistes concernées (relation N:N). Chaque id doit exister. |
-| `color`       | `string`   | Couleur hex, `#rgb` ou `#rrggbb`.                         |
+| `id`          | `string`   | Unique id (UUID v4).                                      |
+| `description` | `string`   | Label shown on the block.                                 |
+| `timeStart`   | `number`   | Start offset in seconds, inclusive. `>= 0`.               |
+| `timeEnd`     | `number`   | End offset in seconds, exclusive. Strictly `> timeStart`. |
+| `trackIds`    | `string[]` | Tracks it runs on (N:N). Every id must exist.             |
+| `color`       | `string`   | Hex colour, `#rgb` or `#rrggbb`.                          |
 
 ### `ProjectData`
 
-| Propriété       | Type              | Description                         |
-| --------------- | ----------------- | ----------------------------------- |
-| `schemaVersion` | `number`          | Version du schéma. Voir ci-dessous. |
-| `metadata`      | `ProjectMetadata` | Métadonnées du projet               |
-| `tracks`        | `Track[]`         | Lignes de la timeline               |
-| `cues`          | `Cue[]`           | Blocs temporels                     |
+| Property        | Type              | Description                |
+| --------------- | ----------------- | -------------------------- |
+| `schemaVersion` | `number`          | Schema version. See below. |
+| `metadata`      | `ProjectMetadata` | Project metadata           |
+| `tracks`        | `Track[]`         | Timeline rows              |
+| `cues`          | `Cue[]`           | Timed blocks               |
 
-## Relations
+## Relationships
 
 ```
 Track (1) ←──── (N) Cue.trackIds (N) ────→ (1) Track
-                    Relation N:N implicite
-                    via tableau d'identifiants
+                    implicit N:N relation
+                    through an array of ids
 ```
 
-- Un **Cue** référence une ou plusieurs **Track** via `trackIds`.
-- À la suppression d'une piste, son identifiant est retiré de tous les `trackIds`.
-  Un cue qui se retrouve sans aucune piste est supprimé.
-- Aucune contrainte d'unicité temporelle : les cues peuvent se chevaucher.
+- A **Cue** references one or more **Track**s through `trackIds`.
+- Deleting a track strips its id from every `trackIds`. A cue left with no track
+  at all is deleted too. The cascade happens in the reducer, so it is undoable.
+- There is no temporal uniqueness constraint: cues may overlap.
 
-## Versions du schéma et migration
+## Schema versions and migration
 
-`CURRENT_SCHEMA_VERSION` vaut **2**.
+`CURRENT_SCHEMA_VERSION` is **2**.
 
-| Version | Forme                                                                |
-| ------- | -------------------------------------------------------------------- |
-| v0      | Sans `schemaVersion`. Fichiers antérieurs au versionnement.          |
-| v1      | `actors` / `actions` / `actorIds`, `metadata.musicName` obligatoire. |
-| v2      | `tracks` / `cues` / `trackIds`, `metadata.soundtrack` facultatif.    |
+| Version | Shape                                                             |
+| ------- | ----------------------------------------------------------------- |
+| v0      | No `schemaVersion`. Files written before versioning existed.      |
+| v1      | `actors` / `actions` / `actorIds`, `metadata.musicName` required. |
+| v2      | `tracks` / `cues` / `trackIds`, `metadata.soundtrack` optional.   |
 
-La chaîne de migration vit dans [src/utils/migration.ts](../src/utils/migration.ts)
-et s'applique **à l'import fichier comme au chargement du cache**. Elle ne mute jamais
-son entrée.
+The migration chain lives in [src/utils/migration.ts](../src/utils/migration.ts)
+and runs on **file import and on cache load alike**. It never mutates its input.
 
-> **Toute évolution du modèle exige** : incrémenter `CURRENT_SCHEMA_VERSION`, ajouter
-> une étape de migration, et un test couvrant **chaque** version antérieure. Voir
-> [CONTRIBUTING.md](../CONTRIBUTING.md). Un fichier d'exemple v1 est conservé dans
-> [`examples/`](../examples/) précisément pour éprouver cette chaîne.
+> **Changing the model requires** bumping `CURRENT_SCHEMA_VERSION`, adding a
+> migration step, and a test covering **every** earlier version. See
+> [CONTRIBUTING.md](../CONTRIBUTING.md). A v1 example file is kept in
+> [`examples/`](../examples/) precisely to exercise this chain.
 
 ## Validation
 
-[src/utils/validation.ts](../src/utils/validation.ts) expose `isValidProjectData`,
-**point de passage unique** pour toute donnée non fiable : cache navigateur comme
-fichier importé. Elle s'exécute après la migration.
+[src/utils/validation.ts](../src/utils/validation.ts) exports
+`isValidProjectData`, the **single gate** for any untrusted data — browser cache
+and imported file alike. It runs after migration.
 
-Auparavant, deux chemins divergeaient : le cache était solidement validé tandis que
-l'import fichier — l'entrée la plus exposée — ne vérifiait que deux champs, laissant
-passer par exemple une durée négative.
+The two paths used to diverge: the cache was validated thoroughly while file
+import — the more exposed of the two — checked only a couple of fields and let a
+negative duration through.
 
-| Règle                                           | Vérifiée dans   |
-| ----------------------------------------------- | --------------- |
-| `schemaVersion` entier `>= 1`                   | `validation.ts` |
-| `title` non vide                                | `validation.ts` |
-| `0 < durationSeconds <= MAX_DURATION_SECONDS`   | `validation.ts` |
-| `soundtrack` absent ou chaîne                   | `validation.ts` |
-| `tracks` et `cues` sont des tableaux            | `validation.ts` |
-| identifiants de piste présents et uniques       | `validation.ts` |
-| `0 <= timeStart < timeEnd`, tous deux finis     | `validation.ts` |
-| chaque `trackIds` référence une piste existante | `validation.ts` |
-| `color` au format `#rgb` ou `#rrggbb`           | `validation.ts` |
-| `timeEnd <= durationSeconds`                    | `CueModal`      |
-| `trackIds.length >= 1`                          | `CueModal`      |
-| format temporel `mm:ss`, secondes `<= 59`       | `time.ts`       |
+| Rule                                           | Enforced in     |
+| ---------------------------------------------- | --------------- |
+| `schemaVersion` an integer `>= 1`              | `validation.ts` |
+| `title` non-blank                              | `validation.ts` |
+| `0 < durationSeconds <= MAX_DURATION_SECONDS`  | `validation.ts` |
+| `soundtrack` absent or a string                | `validation.ts` |
+| `tracks` and `cues` are arrays                 | `validation.ts` |
+| track ids present and unique                   | `validation.ts` |
+| `0 <= timeStart < timeEnd`, both finite        | `validation.ts` |
+| every `trackIds` entry references a real track | `validation.ts` |
+| `color` matches `#rgb` or `#rrggbb`            | `validation.ts` |
+| `timeEnd <= durationSeconds`                   | `CueModal`      |
+| `trackIds.length >= 1`                         | `CueModal`      |
+| `mm:ss` format, seconds `<= 59`                | `time.ts`       |
 
-## Palette de couleurs proposée
+## Suggested colour palette
 
-Définie dans `CueModal.tsx` :
+Defined in `CueModal.tsx`:
 
 ```
 #ef4444  #f97316  #f59e0b  #84cc16  #22c55e
 #06b6d4  #3b82f6  #6366f1  #a855f7  #ec4899
 ```
 
-Dix couleurs de la palette Tailwind. La validation accepte n'importe quelle couleur
-hexadécimale, pas seulement celles-ci.
+Ten Tailwind colours. Validation accepts any hex colour, not just these.

@@ -14,7 +14,8 @@
     "typecheck": "tsc --noEmit",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
-    "verify": "npm run typecheck && npm run lint && npm run format:check && npm test && npm run build"
+    "verify": "npm run typecheck && npm run lint && npm run format:check && npm run check:links && npm test && npm run build",
+    "check:links": "node scripts/check-links.mjs"
   },
   "dependencies": {
     "clsx": "^2.1.1",
