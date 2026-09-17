@@ -27,3 +27,41 @@ export function markerTimes(durationSeconds: number): number[] {
   }
   return times;
 }
+
+/**
+ * Where a time sits on the axis, as a percentage of the total duration.
+ *
+ * Every position on screen is expressed this way — axis markers, grid lines,
+ * cue blocks, the playhead — so the conversion lives here rather than being
+ * copied to each call site. Applied to a difference of two times it gives a
+ * width instead of an offset; the arithmetic is the same.
+ *
+ * It deliberately does **not** clamp. `timeEnd <= durationSeconds` is enforced
+ * by `CueModal`, not by `isValidProjectData`, so an imported file can carry a
+ * cue that runs past the end; letting it overflow the lane shows the reader
+ * that it does.
+ */
+export function timeToPercent(
+  seconds: number,
+  durationSeconds: number,
+): number {
+  if (durationSeconds <= 0) return 0;
+  return (seconds / durationSeconds) * 100;
+}
+
+/**
+ * The inverse: which time a point on the axis corresponds to.
+ *
+ * This is what clicking the timeline to move the playhead needs. Unlike
+ * `timeToPercent` it **does** clamp, to `[0, durationSeconds]`: a pointer can
+ * land a fraction outside the lane it was measured against, and seeking to a
+ * negative time is not a thing.
+ */
+export function percentToTime(
+  percent: number,
+  durationSeconds: number,
+): number {
+  if (durationSeconds <= 0) return 0;
+  const seconds = (percent / 100) * durationSeconds;
+  return Math.min(Math.max(seconds, 0), durationSeconds);
+}
