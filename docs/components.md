@@ -189,9 +189,20 @@ draws more labels rather than the same ones further apart.
 The control lives in `App`, not here: this component's node is what `useExport`
 captures, so a control inside it would appear in the JPEG.
 
-Measuring the lane uses a `ResizeObserver`, which jsdom does not provide —
-whoever writes the first `Timeline` test will need a stub, the way
-`useAudio.test.ts` stubs Web Audio.
+Measuring the lane uses a `ResizeObserver`, which jsdom does not provide.
+[`browserStubs.ts`](../src/__tests__/browserStubs.ts) supplies one, along with a
+width for elements jsdom reports as zero-sized — which is what makes the drag
+reachable from a test at all.
+
+### What is covered
+
+[`Timeline.test.tsx`](../src/__tests__/Timeline.test.tsx) — 28 tests over what it
+draws, opening and deleting, keyboard retiming, dragging, and the audio-dependent
+parts. [`AudioBar.test.tsx`](../src/__tests__/AudioBar.test.tsx) — 20, over the
+transport, every shortcut guard, the length mismatch and errors.
+
+They pin behaviour, not geometry. See
+[the dividing line](dev_setup.md#what-a-test-can-and-cannot-tell-you-here).
 
 **Keyboard and pointer.** A cue is a `role="button"` with `tabIndex={0}`, opens
 on click, `Enter` or `Space`, and carries an `aria-label` naming it and its time

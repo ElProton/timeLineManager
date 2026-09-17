@@ -146,10 +146,16 @@ Known defects, each small and self-contained. Good places to start.
 
 Most of the defects found in the first audit are fixed. What is left:
 
-- 🔵 **Component test coverage is thin.** The utilities, reducer, hooks, `Modal` and
-  the confirmation flow are covered; the form modals, `Timeline`, `ProjectInit`,
-  `AudioBar` and `Waveform` are not. The last two need a browser: jsdom has no Web
-  Audio, no canvas and no `ResizeObserver`.
+- 🟢 **`ProjectInit` and the form modals are still untested.** Everything else is:
+  the utilities, the reducer, the hooks, `Modal`, the confirmation flow, `Timeline`
+  and `AudioBar`. These three are plain forms with no geometry, so they need none of
+  the awkward parts — [`browserStubs.ts`](src/__tests__/browserStubs.ts) is there if
+  they do, and `Timeline.test.tsx` is the worked example. A good place to start.
+- 🔵 **`Waveform` can only be checked in a browser.** jsdom returns `null` from
+  `getContext("2d")`, so nothing it draws is observable in a test. The arithmetic
+  behind it, `computePeaks`, is pure and covered; what is missing is an automated
+  check that the drawing matches the samples, which means driving a real browser in
+  CI.
 - 🟢 **Snapping has no escape hatch.** A drag snaps to the playhead and to other
   cues' edges within 8 px. There is no modifier to suspend it, which most editors
   offer, and no visual sign of what an edge just snapped to.
