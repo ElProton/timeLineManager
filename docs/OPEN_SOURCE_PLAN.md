@@ -52,7 +52,7 @@ Le projet est en bien meilleur état que son README ne le laisse croire.
 - **Versionnement du schéma** (`schemaVersion`) et chaîne de migration déjà en place —
   le socle exact dont la décision D2 a besoin.
 
-Les points P1 du backlog `documentation/optimisation.md` (refactoring hooks,
+Les points P1 du backlog `docs/optimisation.md` (supprimé au lot 3) (refactoring hooks,
 `useReducer`, undo/redo, modale générique, versionnement du schéma) ainsi que le
 point P2 « tests » ont donc **déjà été livrés**. Ce backlog est à jour côté
 priorités mais périmé côté statut.
@@ -68,13 +68,13 @@ est déjà actif aujourd'hui — pas au moment d'un futur basculement en public.
 
 Le projet a été généré depuis Google AI Studio et n'a jamais été décontaminé.
 
-| Fichier                      | Problème                                                                                                                                                                        |
-| ---------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `README.md`                  | Boilerplate « Run and deploy your AI Studio app », bannière pointant vers un asset GitHub tiers, lien vers une app AI Studio privée, instruction de renseigner `GEMINI_API_KEY` |
-| `.env.example`               | Documente `GEMINI_API_KEY` et `APP_URL`, **aucun des deux n'est lu par le code** (vérifié : zéro occurrence de `process.env` dans `src/` et `vite.config.ts`)                   |
-| `metadata.json`              | Artefact de manifeste AI Studio, inutilisé par Vite                                                                                                                             |
-| `index.html`                 | `<title>My Google AI Studio App</title>`, `lang="en"`, ni favicon ni meta description                                                                                           |
-| `documentation/dev_setup.md` | Documente `GEMINI_API_KEY` et `DISABLE_HMR` comme variables d'environnement actives — les deux sont inexistantes                                                                |
+| Fichier             | Problème                                                                                                                                                                        |
+| ------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `README.md`         | Boilerplate « Run and deploy your AI Studio app », bannière pointant vers un asset GitHub tiers, lien vers une app AI Studio privée, instruction de renseigner `GEMINI_API_KEY` |
+| `.env.example`      | Documente `GEMINI_API_KEY` et `APP_URL`, **aucun des deux n'est lu par le code** (vérifié : zéro occurrence de `process.env` dans `src/` et `vite.config.ts`)                   |
+| `metadata.json`     | Artefact de manifeste AI Studio, inutilisé par Vite                                                                                                                             |
+| `index.html`        | `<title>My Google AI Studio App</title>`, `lang="en"`, ni favicon ni meta description                                                                                           |
+| `docs/dev_setup.md` | Documente `GEMINI_API_KEY` et `DISABLE_HMR` comme variables d'environnement actives — les deux sont inexistantes                                                                |
 
 Un visiteur arrivant sur le dépôt lit donc, en premier écran, qu'il lui faut une clé
 d'API Gemini pour faire tourner une application qui n'appelle aucune API.
@@ -118,12 +118,12 @@ d'API Gemini pour faire tourner une application qui n'appelle aucune API.
 | B8  | `components/Modal.tsx`                                   | Ni `Escape`, ni piège de focus, ni fermeture au clic sur l'arrière-plan, ni `role="dialog"` / `aria-modal`                    | Modale inutilisable au clavier et pour un lecteur d'écran.                                                          |
 | B9  | `hooks/useProjectManager.ts`, `ProjectInit`, `useExport` | 5 `confirm()` / `alert()` natifs                                                                                              | Non stylables, non traduisibles, bloqués dans certains contextes embarqués, difficiles à tester.                    |
 | B10 | `components/MetadataModal.tsx`                           | Messages d'erreur et d'avertissement **en français** dans une interface sinon entièrement anglaise                            | Incohérence visible en production.                                                                                  |
-| B11 | `documentation/specs/cache_local_autosave.md` §2.1       | La protection `beforeunload` est spécifiée mais **absente du code**                                                           | Écart spec / implémentation non tracé.                                                                              |
+| B11 | `docs/specs/cache_local_autosave.md` §2.1                | La protection `beforeunload` est spécifiée mais **absente du code**                                                           | Écart spec / implémentation non tracé.                                                                              |
 | B12 | —                                                        | Aucun _error boundary_ React                                                                                                  | Une exception de rendu vide la page sans message.                                                                   |
 
 ### 2.6 Documentation périmée
 
-`documentation/` décrit une version du code qui n'existe plus. Un contributeur qui la
+`docs/` décrivait une version du code qui n'existe plus. Un contributeur qui la
 lit part sur de fausses bases :
 
 - `architecture.md` décrit la gestion d'état par `useState` dans `App.tsx` et affirme
@@ -223,7 +223,7 @@ mainteneur à temps plein.
 | 0   | Décontamination et outillage                        | **Livré**      |
 | 1   | Ouverture open-source du dépôt                      | **Livré**      |
 | 2   | Dé-spécialisation : schéma v2 + correction des bugs | **Livré**      |
-| 3   | Réécriture documentaire depuis le code réel         | Partiel        |
+| 3   | Réécriture documentaire depuis le code réel         | **Livré**      |
 | 4   | Fonctionnalités d'adoption                          | Backlog public |
 
 ### Lot 0 — Décontamination et outillage
@@ -305,11 +305,12 @@ découpés pour être pris par un contributeur extérieur sans arbitrage du prop
 
 ## 5. Journal des sessions
 
-| Date       | Session          | Livré                                                                                                                                                                                                                                        |
-| ---------- | ---------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| 2026-09-17 | Analyse initiale | État des lieux vérifié (tests, build, typage, bugs), décisions D1-D4 actées, ce plan.                                                                                                                                                        |
-| 2026-09-17 | Lot 0            | Décontamination AI Studio, BOM purgés, `@types/react` + `strict` (38 erreurs corrigées, dont `ringColor`), ESLint + Prettier + EditorConfig, `npm run verify`.                                                                               |
-| 2026-09-17 | Lot 1            | LICENSE MIT, CI (Node 20/22), déploiement GitHub Pages, CONTRIBUTING / CODE_OF_CONDUCT / SECURITY / MAINTENANCE / ROADMAP, templates issues et PR, Dependabot, ADR-001 récupéré de la PR #1, agents déplacés vers `docs/contrib/ai-agents/`. |
+| Date       | Session          | Livré                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  |
+| ---------- | ---------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| 2026-09-17 | Analyse initiale | État des lieux vérifié (tests, build, typage, bugs), décisions D1-D4 actées, ce plan.                                                                                                                                                                                                                                                                                                                                                                                                                                                                  |
+| 2026-09-17 | Lot 0            | Décontamination AI Studio, BOM purgés, `@types/react` + `strict` (38 erreurs corrigées, dont `ringColor`), ESLint + Prettier + EditorConfig, `npm run verify`.                                                                                                                                                                                                                                                                                                                                                                                         |
+| 2026-09-17 | Lot 1            | LICENSE MIT, CI (Node 20/22), déploiement GitHub Pages, CONTRIBUTING / CODE_OF_CONDUCT / SECURITY / MAINTENANCE / ROADMAP, templates issues et PR, Dependabot, ADR-001 récupéré de la PR #1, agents déplacés vers `docs/contrib/ai-agents/`.                                                                                                                                                                                                                                                                                                           |
+| 2026-09-17 | Lot 3            | Documentation remise en phase avec le code. `architecture.md` et `components.md` réécrits depuis les sources ; `utilities.md` réparé — deux modifications du lot 2 n'y étaient jamais arrivées (un `str.replace` non asserté) et le fichier se contredisait ; `dev_setup.md` corrigé (arborescence) ; `ROADMAP.md` corrigé (accessibilité et i18n périmées) et complété (performance de rendu). **Toute la doc passe en anglais.** `optimisation.md` supprimé au profit du ROADMAP. Vérificateur de liens `scripts/check-links.mjs` branché sur la CI. |
 
 ## 6. À faire à la main, hors dépôt
 

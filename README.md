@@ -86,10 +86,6 @@ React 19, TypeScript, Vite 6, Tailwind CSS 4, Vitest. No backend, no external AP
 - [Maintenance policy](docs/MAINTENANCE.md) — how this project is looked after
 - [Security policy](SECURITY.md)
 
-> `architecture.md` and `components.md` still describe an earlier state of the
-> code and are being rewritten. `data_model.md`, `dev_setup.md` and `utilities.md`
-> are current.
-
 ## Contributing
 
 Contributions are welcome. Start with [CONTRIBUTING.md](CONTRIBUTING.md), and pick an

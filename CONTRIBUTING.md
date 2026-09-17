@@ -127,10 +127,16 @@ it changes the interface, a screenshot saves a review round trip.
 
 ## Language
 
-Contributor-facing files (README, this file, the roadmap, issue templates) are in
-**English**, so the project is open to everyone. Some technical documents under
-`docs/` are still in French for historical reasons; both are accepted there. The
-user interface is currently English only — see the roadmap for internationalisation.
+**The repository is in English** — code, comments, documentation, issues and pull
+requests alike — so that anyone can read the reducer or the migration chain
+before changing them.
+
+The one exception is [`docs/contrib/ai-agents/`](docs/contrib/ai-agents/), a set
+of optional editor-agent definitions kept in French. They are not part of the
+build and nobody needs them to contribute.
+
+The user interface is English only; see [the roadmap](ROADMAP.md) for
+internationalisation.
 
 ## Code of conduct
 

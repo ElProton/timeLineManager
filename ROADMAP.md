@@ -77,6 +77,11 @@ thing that makes real use painful.
 - 🟢 **Keyboard shortcuts** — `Ctrl+Z` / `Ctrl+Y` for the existing undo/redo,
   `Ctrl+S` to export, `Delete` to remove the selection.
 - 🔵 **Overlap detection** — warn when one track has two cues at the same moment.
+- 🔵 **Rendering performance on large projects.** `hoveredCueId` is local state in
+  `Timeline`, so hovering one cue re-renders every track row and every block. Only
+  the time-axis markers are memoised (`useMemo` in `Timeline.tsx`). Splitting the
+  rows into memoised components, or lifting hover out of the render path, is the
+  obvious fix.
 
 ---
 
@@ -106,10 +111,14 @@ lighting desk.
 
 ## 6. Reach
 
-- 🔵 **Internationalisation (English / French).** The interface is English, except for
-  a few French strings in the project settings modal. Strings need extracting first.
-- 🔵 **Keyboard and screen reader accessibility.** Modals have no `Escape` handler,
-  no focus trap and no ARIA roles; the timeline cannot be navigated by keyboard.
+- 🔵 **Internationalisation (English / French).** The interface is entirely English
+  and its strings are hard-coded in the components. Extracting them is the first
+  step; there is no i18n library in the project.
+- 🔵 **Keyboard and screen reader accessibility.** Dialogs are already handled —
+  `Escape`, focus trap, focus restoration and `role`/`aria-modal` all live in
+  `Modal.tsx` — and a cue can be focused and opened with `Enter` or `Space`. What is
+  missing is moving between tracks and cues from the keyboard without tabbing through
+  every block, and a coherent screen-reader reading of the timeline as a whole.
   Relevant on stage too, where hands are busy.
 - 🔵 **Responsive layout.** The timeline assumes at least 800 px. Tablets are exactly
   where you consult a running order.
@@ -126,7 +135,6 @@ Most of the defects found in the first audit are fixed. What is left:
 - 🔵 **Component test coverage is thin.** The utilities, reducer, hooks, `Modal` and
   the confirmation flow are covered; the form modals, `Timeline` and `ProjectInit`
   are not.
-- 🔵 **No overlap warning** when one track carries two cues at the same moment.
 - 🟢 **The Inter font loads from Google Fonts at runtime**, so the app is not fully
   offline-capable and makes one external request. Self-hosting it would fix both.
 

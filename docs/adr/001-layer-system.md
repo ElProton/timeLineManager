@@ -1,93 +1,90 @@
-# ADR-001 : Système de Layers pour la Timeline
+# ADR-001: a layer system for the timeline
 
-## Statut
+## Status
 
-**Proposé — non implémenté.**
+**Proposed — not implemented. Archived.**
 
-> Cet ADR provient de la
-> [PR #1](https://github.com/ElProton/timeLineManager/pull/1), ouverte le 23/03/2026.
-> Le raisonnement reste valable et la décision est retenue sur le principe. En
-> revanche, le code de cette PR a été écrit contre une version antérieure de la base
-> (état dans `App.tsx` via `useState`, pas de `schemaVersion`, logique de migration
-> dupliquée dans `ProjectInit`) et ne peut pas être repris tel quel. L'implémentation
-> est à refaire sur l'architecture actuelle, en même temps que le schéma v2 — voir
+> This ADR comes from
+> [PR #1](https://github.com/ElProton/timeLineManager/pull/1), opened on
+> 2026-03-23 and since closed. The reasoning still holds and the decision stands
+> in principle, but that pull request's code was written against an earlier
+> codebase — state in `App.tsx` through `useState`, no `schemaVersion`, migration
+> logic duplicated inside `ProjectInit` — and cannot be reused. The
+> implementation has to be redone on the current architecture; see
 > [ROADMAP.md](../../ROADMAP.md) §4.
 >
-> Le format JSON décrit ci-dessous est donc **indicatif** : il devra intégrer
-> `schemaVersion` et le vocabulaire générique (`Track` / `Cue`) retenu pour le
-> schéma v2.
+> The JSON below is therefore **indicative**. Any real implementation must carry
+> `schemaVersion` and use the v2 vocabulary (`Track` / `Cue`).
+>
+> This document is archived and is not maintained.
 
 ## Date
 
 2026-03-23
 
-## Contexte
+## Context
 
-L'application permet actuellement de gérer une timeline unique avec des acteurs et
-des actions. Cependant, pour un même spectacle (même musique, même durée), il est
-nécessaire de pouvoir représenter plusieurs couches d'information :
+The application manages a single timeline with tracks and cues. For one show —
+same soundtrack, same duration — it is useful to represent several layers of
+information:
 
-- **Couche artistique** : mouvements des danseurs, chorégraphie, jeu scénique
-- **Couche technique** : éclairages, sons, effets spéciaux, changements de décor
-- **Autres couches** possibles selon les besoins de production
+- **Artistic:** performer movement, choreography, staging
+- **Technical:** lighting, sound, effects, scene changes
+- Any other layer the production needs
 
-Actuellement, toutes les informations sont mélangées sur une seule vue, ce qui rend
-la lecture confuse lorsque le nombre d'acteurs et d'actions augmente.
+Today everything sits on one view, which becomes hard to read as the number of
+tracks and cues grows.
 
-Hors du contexte spectacle, le même besoin se retrouve sous d'autres noms :
-séparer les équipes des prestataires, les pistes son des pistes vidéo, les
-intervenants des transitions.
+Outside live performance the same need appears under other names: separating
+teams from suppliers, sound from video, speakers from transitions.
 
-## Décision
+## Decision
 
-### Modèle de données
+### Data model
 
-Introduction d'un concept de **Layer** (couche) dans le modèle de données.
+Introduce a **Layer** concept.
 
-**Avant :**
+**Before:**
 
 ```json
 {
-  "metadata": { "title": "...", "musicName": "...", "durationSeconds": 900 },
-  "actors": [...],
-  "actions": [...]
+  "metadata": { "title": "...", "soundtrack": "...", "durationSeconds": 900 },
+  "tracks": [...],
+  "cues": [...]
 }
 ```
 
-**Après :**
+**After:**
 
 ```json
 {
-  "metadata": { "title": "...", "musicName": "...", "durationSeconds": 900 },
+  "metadata": { "title": "...", "soundtrack": "...", "durationSeconds": 900 },
   "layers": [
-    { "id": "uuid", "name": "Artistique", "actors": [...], "actions": [...] },
-    { "id": "uuid", "name": "Technique",  "actors": [...], "actions": [...] }
+    { "id": "uuid", "name": "Artistic", "tracks": [...], "cues": [...] },
+    { "id": "uuid", "name": "Technical", "tracks": [...], "cues": [...] }
   ]
 }
 ```
 
-### Règles de conception
+### Design rules
 
-1. **Éléments communs** : `metadata` (titre, bande son, durée totale) est partagé
-   entre tous les layers.
-2. **Éléments propres à chaque layer** : chaque layer possède ses propres pistes et
-   ses propres cues.
-3. **Nom unique** : chaque layer a un nom unique pour l'identifier facilement.
-4. **Layer par défaut** : à la création d'un projet, un layer par défaut est créé
-   automatiquement.
-5. **Rétrocompatibilité** : l'import d'un fichier au format antérieur est géré par
-   la chaîne de migration de `src/utils/migration.ts` — **et non par une logique
-   dupliquée dans `ProjectInit`**, contrairement à ce que faisait la PR d'origine.
+1. **Shared:** `metadata` — title, soundtrack, total duration — is common to
+   every layer.
+2. **Per layer:** each layer owns its own tracks and cues.
+3. **Unique names**, so a layer can be identified at a glance.
+4. **A default layer** is created with every new project.
+5. **Backward compatibility** is handled by the migration chain in
+   `src/utils/migration.ts` — **not** by logic duplicated inside `ProjectInit`,
+   which is what the original pull request did.
 
-### Interface utilisateur
+### Interface
 
-1. Un **sélecteur** dans la barre d'outils permet de choisir le layer actif et d'en
-   ajouter un.
-2. Les opérations existantes s'appliquent au layer actuellement sélectionné.
-3. L'export image porte sur le **layer actif** ; l'export JSON porte sur le **projet
-   complet**, tous layers confondus.
+1. A **selector** in the toolbar picks the active layer and adds new ones.
+2. Existing operations apply to the active layer.
+3. The image export covers the **active layer**; the JSON export covers the
+   **whole project**, every layer included.
 
-### Interface TypeScript
+### TypeScript
 
 ```typescript
 interface Layer {
@@ -104,23 +101,23 @@ interface ProjectData {
 }
 ```
 
-## Conséquences
+## Consequences
 
-### Positives
+### Positive
 
-- **Séparation des préoccupations** : organisation des informations par domaine.
-- **Clarté visuelle** : chaque couche n'affiche que ce qui la concerne.
-- **Flexibilité** : nombre de layers non borné.
-- **Rétrocompatibilité** : les anciens fichiers sont migrés automatiquement.
-- **Généricité** : le concept se transpose hors du spectacle sans renommage.
+- **Separation of concerns:** information organised by domain
+- **Visual clarity:** each layer shows only what belongs to it
+- **Flexibility:** no cap on the number of layers
+- **Backward compatible:** older files migrate automatically
+- **Generic:** the concept carries outside live performance without renaming
 
-### Négatives
+### Negative
 
-- **Complexité accrue du modèle** : la gestion d'état gagne l'indirection du layer
-  actif, y compris dans le reducer et l'historique undo/redo.
-- **Risque de confusion** : l'utilisateur doit savoir sur quel layer il travaille.
+- **A more complex model:** state management gains the indirection of an active
+  layer, including in the reducer and the undo/redo history
+- **Risk of confusion:** the reader has to know which layer they are editing
 
-### Neutres
+### Neutral
 
-- Le format JSON évolue mais reste un fichier unique par projet.
-- L'export image ne capture que le layer actif (choix délibéré, pour la lisibilité).
+- The JSON format changes but stays one file per project
+- The image export captures only the active layer, deliberately, for legibility

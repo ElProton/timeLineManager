@@ -1,32 +1,36 @@
-# Fonctions Utilitaires
+# Utilities
 
-## `cn` — Merge de classes CSS
+Pure functions, no React. Everything here is tested directly — see
+[`src/__tests__/`](../src/__tests__/).
 
-**Fichier :** [src/utils/cn.ts](../src/utils/cn.ts)
+---
+
+## `cn` — CSS class merging
+
+**File:** [src/utils/cn.ts](../src/utils/cn.ts)
 
 ```typescript
 cn(...inputs: ClassValue[]): string
 ```
 
-Combine `clsx` (concaténation conditionnelle de classes) et `tailwind-merge` (résolution des conflits Tailwind CSS). Pattern standard dans les projets Tailwind.
-
-**Usage :** appliquer des classes conditionnelles sans conflit de spécificité Tailwind.
+Combines `clsx` (conditional class concatenation) with `tailwind-merge`
+(resolving Tailwind conflicts). The standard pattern in Tailwind projects.
 
 ```tsx
 className={cn(
   "base-class",
-  isActive && "bg-blue-500",   // clsx : inclusion conditionnelle
-  "bg-red-500"                 // tailwind-merge : résout le conflit → bg-red-500 gagne
+  isActive && "bg-blue-500",   // clsx: conditional inclusion
+  "bg-red-500"                 // tailwind-merge: conflict resolved → bg-red-500 wins
 )}
 ```
 
 ---
 
-## Module `time` — Manipulation temporelle
+## `time` — time handling
 
-**Fichier :** [src/utils/time.ts](../src/utils/time.ts)
+**File:** [src/utils/time.ts](../src/utils/time.ts)
 
-Toutes les fonctions opèrent sur le format `mm:ss` ↔ secondes (entiers).
+All of these work on `mm:ss` ↔ whole seconds.
 
 ### `formatTime`
 
@@ -34,13 +38,15 @@ Toutes les fonctions opèrent sur le format `mm:ss` ↔ secondes (entiers).
 formatTime(seconds: number): string
 ```
 
-Convertit un nombre de secondes en chaîne `mm:ss` (zéro-paddé).
+Formats seconds as zero-padded `mm:ss`. **Minutes are not capped at 59** and it
+never rolls over into hours: an hour reads `60:00`.
 
-| Entrée | Sortie    |
+| Input  | Output    |
 | ------ | --------- |
 | `0`    | `"00:00"` |
 | `75`   | `"01:15"` |
 | `600`  | `"10:00"` |
+| `3600` | `"60:00"` |
 
 ### `parseTime`
 
@@ -48,13 +54,17 @@ Convertit un nombre de secondes en chaîne `mm:ss` (zéro-paddé).
 parseTime(timeStr: string): number
 ```
 
-Convertit une chaîne `mm:ss` en nombre de secondes. Retourne `0` si le format est invalide.
+Parses `mm:ss` into seconds, returning `0` for anything it cannot parse. The
+string is validated by `isValidTimeFormat` **before any digit is read**, because
+`parseInt` alone accepts `"01:5abc"` and returns `5`.
 
-| Entrée    | Sortie |
-| --------- | ------ |
-| `"01:15"` | `75`   |
-| `"10:00"` | `600`  |
-| `"abc"`   | `0`    |
+| Input       | Output |
+| ----------- | ------ |
+| `"01:15"`   | `75`   |
+| `"10:00"`   | `600`  |
+| `"abc"`     | `0`    |
+| `"00:99"`   | `0`    |
+| `"01:5abc"` | `0`    |
 
 ### `isValidTimeFormat`
 
@@ -62,16 +72,25 @@ Convertit une chaîne `mm:ss` en nombre de secondes. Retourne `0` si le format e
 isValidTimeFormat(timeStr: string): boolean
 ```
 
-Valide qu'une chaîne respecte le format `mm:ss` via la regex `/^\d{2,}:\d{2}$/`.
+True when the string matches `/^\d{2,}:[0-5]\d$/`.
 
-| Entrée     | Sortie  |
+| Input      | Output  |
 | ---------- | ------- |
+| `"00:00"`  | `true`  |
 | `"01:15"`  | `true`  |
+| `"00:59"`  | `true`  |
 | `"100:00"` | `true`  |
+| `"00:99"`  | `false` |
+| `"03:60"`  | `false` |
 | `"1:5"`    | `false` |
 | `"ab:cd"`  | `false` |
 
-> **Note :** la regex accepte les minutes à plus de 2 chiffres (`100:00`), mais les secondes doivent être exactement 2 chiffres. Aucune validation de borne (ex: `99:99` est considéré valide par le format).
+**Minutes are deliberately unbounded** — a 100-minute timeline is written
+`100:00`, and `formatTime` never produces hours. **Seconds are bounded at 59.**
+
+> **History.** The earlier pattern was `/^\d{2,}:\d{2}$/`, which accepted
+> `"00:99"`: the entry silently became 99 seconds and was redisplayed as
+> `"01:39"`. No test covered a value above `:59`, so the bug was invisible.
 
 ### `sanitiseFilename`
 
@@ -79,78 +98,104 @@ Valide qu'une chaîne respecte le format `mm:ss` via la regex `/^\d{2,}:\d{2}$/`
 sanitiseFilename(name: string): string
 ```
 
-Rend une chaîne libre utilisable comme nom de fichier téléchargé. Les titres de projet
-étant saisis librement, un projet nommé « Gala 1/2 » produisait auparavant un nom de
-fichier tronqué ou rejeté selon le système.
+Makes free text safe as a download filename. Project titles are typed by hand,
+so a project called "Gala 1/2" used to produce a filename the browser truncated
+or rejected.
 
-| Entrée               | Sortie               |
+| Input                | Output               |
 | -------------------- | -------------------- |
 | `"Opening ceremony"` | `"Opening_ceremony"` |
 | `"Gala 1/2"`         | `"Gala_1-2"`         |
 | `"  spaced   out "`  | `"spaced_out"`       |
+| `"Boléro final"`     | `"Boléro_final"`     |
 | `""`                 | `"timeline"`         |
 
-Les caractères interdits (`/ \ : * ? " < > |`) deviennent des tirets, les caractères
-de contrôle sont supprimés, les espaces deviennent des underscores, et le résultat est
-plafonné à 100 caractères. Les caractères accentués sont conservés.
+Forbidden characters (`/ \ : * ? " < > |`) become hyphens, control characters are
+stripped, whitespace becomes underscores, and the result is capped at 100
+characters. Accented characters are kept. An empty result falls back to
+`"timeline"`.
 
 ---
 
-## Module `timeline` — Échelle temporelle
+## `timeline` — the time axis scale
 
-**Fichier :** [src/utils/timeline.ts](../src/utils/timeline.ts)
-
-### `markerStep` et `markerTimes`
+**File:** [src/utils/timeline.ts](../src/utils/timeline.ts)
 
 ```typescript
 markerStep(durationSeconds: number): number
 markerTimes(durationSeconds: number): number[]
 ```
 
-Choisit un intervalle entre marqueurs dans une échelle de valeurs rondes
-(1, 2, 5, 10, 15, 30, 60, 120, 300, 600, 900, 1800, 3600 s), de façon à ne jamais
-dépasser 40 marqueurs sur l'axe.
+Picks the interval between axis labels from a fixed scale of round values — 1, 2,
+5, 10, 15, 30, 60, 120, 300, 600, 900, 1800, 3600 seconds — taking the first that
+keeps the axis at 40 labels or fewer. Past that scale it falls back to
+`Math.ceil(duration / 40)`.
 
-| Durée     | Pas retenu | Marqueurs |
-| --------- | ---------- | --------- |
-| 3 min     | 5 s        | 37        |
-| 15 min    | 30 s       | 31        |
-| 1 h       | 2 min      | 31        |
-| `9999:00` | 15 min     | 40        |
+| Duration  | Step chosen         | Markers |
+| --------- | ------------------- | ------- |
+| 3 min     | 5 s                 | 37      |
+| 15 min    | 30 s                | 31      |
+| 1 hour    | 2 min               | 31      |
+| `9999:00` | 14 999 s (~250 min) | 40      |
 
-> **Historique.** La règle précédente — 30 s en dessous de dix minutes, 60 s au-dessus —
-> générait **10 000 marqueurs par ligne de piste** pour une durée mal saisie telle que
-> `9999:00`, ce qui figeait l'onglet. Elle laissait par ailleurs une timeline de trois
-> minutes avec seulement sept repères.
+> **History.** The earlier rule — 30 s below ten minutes, 60 s above — generated
+> **10,000 markers per track row** for a mistyped duration such as `9999:00`,
+> which froze the tab. It also left a three-minute timeline with only seven
+> labels.
 
 ---
 
-## Module `validation` — Validation structurelle
+## `validation` — structural validation
 
-**Fichier :** [src/utils/validation.ts](../src/utils/validation.ts)
-
-### `isValidProjectData`
+**File:** [src/utils/validation.ts](../src/utils/validation.ts)
 
 ```typescript
 isValidProjectData(data: unknown): data is ProjectData
 ```
 
-Point de passage unique pour toute donnée non fiable — cache navigateur comme fichier
-importé —, exécuté après la migration. Le détail des règles est dans
+The single gate for any untrusted data — browser cache and imported file alike —
+run after migration. The full rule list is in
 [data_model.md](data_model.md#validation).
 
 ---
 
-## Module `migration` — Migration de schéma
+## `migration` — schema migration
 
-**Fichier :** [src/utils/migration.ts](../src/utils/migration.ts)
-
-### `migrateProject`
+**File:** [src/utils/migration.ts](../src/utils/migration.ts)
 
 ```typescript
 migrateProject(data: unknown): Record<string, unknown> | null
 ```
 
-Applique la chaîne `v0 → v1 → v2`. Retourne `null` si la donnée est inexploitable ou
-porte une version inconnue. **Ne mute jamais son entrée** : chaque étape reconstruit
-les objets champ par champ, sans `structuredClone` — que jsdom ne fournit pas.
+Applies the chain `v0 → v1 → v2`. Returns `null` when the data is unusable or
+carries an unknown version.
+
+**It never mutates its input.** Each step rebuilds the objects field by field
+rather than deep-cloning — `structuredClone` is unavailable in jsdom, so the
+tests could not rely on it.
+
+---
+
+## `storage` — the browser cache
+
+**File:** [src/utils/storage.ts](../src/utils/storage.ts)
+
+```typescript
+STORAGE_KEY: string
+isCacheAvailable(): boolean
+saveCachedProject(data: ProjectData): void
+loadCachedProject(): ProjectData | null
+clearCachedProject(): void
+```
+
+Wraps `localStorage` under a single key. `isCacheAvailable` probes with a
+write/read/delete cycle, so private browsing, a full quota or a blocking policy
+are all detected the same way.
+
+`loadCachedProject` runs the cached value through `migrateProject` and
+`isValidProjectData`, and **clears the entry** when either rejects it, so a
+corrupted cache cannot wedge the app on every load.
+
+Every operation swallows its errors and warns to the console: a storage problem
+must never block someone mid-edit. `STORAGE_KEY` is exported so tests need not
+repeat the literal.
