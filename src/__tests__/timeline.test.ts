@@ -1,5 +1,10 @@
 import { describe, it, expect } from "vitest";
-import { markerStep, markerTimes } from "../utils/timeline";
+import {
+  markerStep,
+  markerTimes,
+  percentToTime,
+  timeToPercent,
+} from "../utils/timeline";
 
 describe("markerStep", () => {
   it("keeps the marker count bounded for any duration", () => {
@@ -38,5 +43,62 @@ describe("markerTimes", () => {
     const times = markerTimes(600);
     const gaps = times.slice(1).map((t, i) => t - times[i]);
     expect(new Set(gaps).size).toBe(1);
+  });
+});
+
+describe("timeToPercent", () => {
+  it("places a time along the axis", () => {
+    expect(timeToPercent(0, 200)).toBe(0);
+    expect(timeToPercent(50, 200)).toBe(25);
+    expect(timeToPercent(200, 200)).toBe(100);
+  });
+
+  it("turns a difference of two times into a width", () => {
+    // How the cue blocks are sized: the same arithmetic on a delta.
+    expect(timeToPercent(90 - 30, 240)).toBe(25);
+  });
+
+  it("lets a cue past the end overflow rather than clamping it", () => {
+    // `timeEnd <= durationSeconds` is enforced by CueModal, not by
+    // isValidProjectData, so an imported file can carry one. Overflowing the
+    // lane is how the reader finds out.
+    expect(timeToPercent(300, 200)).toBe(150);
+  });
+
+  it("returns 0 rather than Infinity for a zero duration", () => {
+    expect(timeToPercent(10, 0)).toBe(0);
+    expect(timeToPercent(10, -1)).toBe(0);
+  });
+});
+
+describe("percentToTime", () => {
+  it("reads a time back off the axis", () => {
+    expect(percentToTime(0, 200)).toBe(0);
+    expect(percentToTime(25, 200)).toBe(50);
+    expect(percentToTime(100, 200)).toBe(200);
+  });
+
+  it("round-trips with timeToPercent", () => {
+    for (const [time, duration] of [
+      [0, 200],
+      [1, 7],
+      [155, 3600],
+      [42.5, 90],
+    ]) {
+      expect(
+        percentToTime(timeToPercent(time, duration), duration),
+      ).toBeCloseTo(time, 10);
+    }
+  });
+
+  it("clamps a click that lands outside the lane", () => {
+    // The pointer is measured against an element it can be dragged out of, and
+    // seeking to a negative time is not a thing.
+    expect(percentToTime(-5, 200)).toBe(0);
+    expect(percentToTime(130, 200)).toBe(200);
+  });
+
+  it("returns 0 rather than NaN for a zero duration", () => {
+    expect(percentToTime(50, 0)).toBe(0);
   });
 });

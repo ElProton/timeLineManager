@@ -4,11 +4,14 @@ import { CueModal } from "./components/CueModal";
 import { TrackModal } from "./components/TrackModal";
 import { MetadataModal } from "./components/MetadataModal";
 import { ConfirmDialog } from "./components/ConfirmDialog";
+import { AudioBar } from "./components/AudioBar";
 import { formatTime } from "./utils/time";
+import { MAX_DURATION_SECONDS } from "./types";
 import { useProjectManager } from "./hooks/useProjectManager";
 import { useModals } from "./hooks/useModals";
 import { useExport } from "./hooks/useExport";
 import { useConfirm } from "./hooks/useConfirm";
+import { useAudio } from "./hooks/useAudio";
 import {
   Download,
   Image as ImageIcon,
@@ -35,6 +38,7 @@ export default function App() {
     dismissExportError,
   } = useExport(project.projectData);
   const { confirm, confirmProps } = useConfirm();
+  const audio = useAudio();
 
   if (!project.projectData) {
     return (
@@ -76,6 +80,42 @@ export default function App() {
       destructive: true,
     });
     if (confirmed) project.deleteTrack(trackId);
+  };
+
+  const handleAttachAudio = (file: File) => {
+    void audio.attach(file);
+    // Only fill the label when there is none. Someone who typed "Boléro —
+    // 1928 recording" should not have it overwritten by "track03.mp3".
+    if (!projectData.metadata.soundtrack?.trim()) {
+      project.saveMetadata(
+        { ...projectData.metadata, soundtrack: file.name },
+        false,
+      );
+    }
+  };
+
+  /**
+   * Offers the file's own length as the timeline's duration.
+   *
+   * The duration is the denominator of every position on screen, so this is
+   * never applied silently, and shortening it goes through the same truncation
+   * the settings dialog warns about — undoably.
+   */
+  const handleAdoptDuration = async (seconds: number) => {
+    // Round up, so the last moment of the file is inside the timeline.
+    const durationSeconds = Math.min(Math.ceil(seconds), MAX_DURATION_SECONDS);
+
+    if (durationSeconds < project.maxCueEnd) {
+      const confirmed = await confirm({
+        title: "Shorten the timeline",
+        message: `Cues run to ${formatTime(project.maxCueEnd)}, past the file's ${formatTime(durationSeconds)}. Shortening trims the cues that cross the new end and removes those starting after it. You can undo this.`,
+        confirmLabel: "Shorten and trim",
+        destructive: true,
+      });
+      if (!confirmed) return;
+    }
+
+    project.saveMetadata({ ...projectData.metadata, durationSeconds }, true);
   };
 
   const handleReset = async () => {
@@ -261,6 +301,23 @@ export default function App() {
           </div>
         </div>
 
+        <AudioBar
+          isAttached={audio.isAttached}
+          isPlaying={audio.isPlaying}
+          fileName={audio.fileName}
+          audioDuration={audio.duration}
+          soundtrack={projectData.metadata.soundtrack}
+          projectDuration={projectData.metadata.durationSeconds}
+          error={audio.error}
+          getCurrentTime={audio.getCurrentTime}
+          onAttach={handleAttachAudio}
+          onDetach={audio.detach}
+          onTogglePlay={audio.togglePlay}
+          onSeek={audio.seek}
+          onAdoptDuration={handleAdoptDuration}
+          onDismissError={audio.dismissError}
+        />
+
         {/* Timeline Area */}
         <div className="flex-1 bg-white rounded-xl shadow-sm border border-neutral-200 overflow-hidden flex flex-col">
           <div className="p-4 border-b border-neutral-100 bg-neutral-50/50 flex justify-between items-center">
@@ -276,6 +333,13 @@ export default function App() {
               ref={timelineRef}
               data={projectData}
               filteredTrackId={project.filteredTrackId}
+              audio={{
+                isAttached: audio.isAttached,
+                getCurrentTime: audio.getCurrentTime,
+                duration: audio.duration,
+                peaks: audio.peaks,
+                seek: audio.seek,
+              }}
               onEditCue={(cue) => modals.openCueModal(cue)}
               onDeleteCue={handleDeleteCue}
               onEditTrack={(track) => modals.openTrackModal(track)}

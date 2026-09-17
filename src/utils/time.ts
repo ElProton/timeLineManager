@@ -52,3 +52,16 @@ export function sanitiseFilename(name: string): string {
     .slice(0, 100);
   return cleaned || "timeline";
 }
+
+/**
+ * Formats seconds as `mm:ss.t`, for the transport readout.
+ *
+ * `formatTime` floors to whole seconds, which is right for the `mm:ss` fields a
+ * reader types but leaves a moving playhead looking stuck for six frames at a
+ * time. Kept separate so the input format cannot drift behind it.
+ */
+export function formatTimePrecise(seconds: number): string {
+  const safe = Math.max(0, seconds);
+  const tenths = Math.floor((safe % 1) * 10);
+  return `${formatTime(safe)}.${tenths}`;
+}

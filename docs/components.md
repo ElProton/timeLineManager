@@ -10,7 +10,9 @@ ErrorBoundary
     ├── ProjectInit              ← no project loaded
     │
     ├── header / banners / toolbar   (inline in App, not extracted)
+    ├── AudioBar
     ├── Timeline
+    │   └── Waveform
     ├── CueModal        ┐
     ├── TrackModal      │ all four built on Modal
     ├── MetadataModal   │
@@ -95,29 +97,63 @@ The file input is reset after each attempt so the same file can be retried.
 | ----------------- | --------------------------- | ----------------------------------- |
 | `data`            | `ProjectData`               | The whole project                   |
 | `filteredTrackId` | `string \| null`            | `null` shows every track            |
+| `audio`           | `TimelineAudio?`            | Absent or detached: no playhead     |
 | `onEditCue`       | `(cue: Cue) => void`        | Opens the cue editor                |
 | `onDeleteCue`     | `(cueId: string) => void`   | Asks for confirmation, then deletes |
 | `onEditTrack`     | `(track: Track) => void`    | Opens the track editor              |
 | `onDeleteTrack`   | `(trackId: string) => void` | Asks for confirmation, then deletes |
 
+`TimelineAudio` is deliberately narrower than what `useAudio` returns — the timeline
+draws a position and asks for a new one, and knows nothing about files or playback:
+
+| Field            | Type                        | Description                                  |
+| ---------------- | --------------------------- | -------------------------------------------- |
+| `isAttached`     | `boolean`                   | Gates the waveform, the playhead and seek    |
+| `getCurrentTime` | `() => number`              | Called every animation frame, so not a value |
+| `duration`       | `number`                    | The file's own length, which may differ      |
+| `peaks`          | `Peak[]`                    | Handed to `Waveform`                         |
+| `seek`           | `(seconds: number) => void` | Where a click on the axis goes               |
+
 A `forwardRef` onto the node `useExport` captures for the JPEG export.
 
 ```
 ┌───────────────┬──────────────────────────────────────┐
-│ [soundtrack]  │  00:00 ... 00:30 ... 01:00 ...       │  time axis
+│ [soundtrack]  │  00:00 ... 00:30 ... 01:00 ...       │  time axis  (click to seek)
+├───────────────┼──────────────────────────────────────┤
+│               │  ▁▃█▇▃▁▁▂▅█▆▂▁                       │  waveform   (click to seek)
 ├───────────────┼──────────────────────────────────────┤
 │ Lighting  [✎🗑]│  ██████  ████████████                │  track row
 │ Drone A   [✎🗑]│       ████████       ██████████      │
 │ Catering  [✎🗑]│  ██████████████████████████          │
 └───────────────┴──────────────────────────────────────┘
+                   ╵ playhead, spanning axis to last row
 ```
 
-**Positioning** is percentage-based against the total duration; the axis interval
-comes from `markerTimes` in [`utils/timeline.ts`](../src/utils/timeline.ts), which
-keeps the axis under 40 labels whatever the duration.
+**Positioning** is percentage-based against the total duration, through
+`timeToPercent` in [`utils/timeline.ts`](../src/utils/timeline.ts); the axis interval
+comes from `markerTimes` in the same file, which keeps the axis under 40 labels
+whatever the duration.
+
+**`LaneOverlay` is the one coordinate frame.** Cues sit in a lane that starts after
+the 192 px label gutter, so anything spanning the rows must be positioned in that
+lane too. `LaneOverlay` repeats the `w-48 shrink-0` + `flex-1` pair every row is
+built from and hosts both the hover band and the playhead. Before it existed the band
+was drawn against the full width, which put it 144 px left of its own cue —
+see [the architecture](architecture.md#rendering-the-timeline).
 
 **Multi-track cues** appear on every row they run on. Hovering or focusing one
 draws a dashed band across the full height — only when no filter is active.
+
+**The playhead** is a `translateX` percentage written straight onto `style.transform`
+in a `requestAnimationFrame` loop, never through React. The waveform covers the span
+the file actually occupies: a two-minute file on a ten-minute timeline draws across
+the first fifth, because the playhead is scaled to the timeline and the two have to
+agree. That it does not fill the lane **is** the length mismatch, shown rather than
+described — and `AudioBar` offers to fix it.
+
+**Clicking the time axis or the waveform** moves the playhead there, via
+`percentToTime`. Cue rows are deliberately not click-to-seek: a click there opens the
+cue. Keyboard seeking lives in `AudioBar` (arrow keys), not here.
 
 **Keyboard and pointer.** A cue is a `role="button"` with `tabIndex={0}`, opens
 on click, `Enter` or `Space`, and carries an `aria-label` naming it and its time
@@ -127,6 +163,69 @@ implemented yet — see [the roadmap](../ROADMAP.md).
 
 **Empty state.** With no tracks: _No tracks to display. Add a track to get
 started._
+
+---
+
+## `Waveform` — the soundtrack, drawn
+
+**File:** [src/components/Waveform.tsx](../src/components/Waveform.tsx)
+
+| Prop     | Type      | Description                                |
+| -------- | --------- | ------------------------------------------ |
+| `peaks`  | `Peak[]`  | Min/max pairs from `computePeaks`          |
+| `colour` | `string?` | Any CSS colour, defaults to the app indigo |
+
+A `<canvas>`, not a few thousand DOM nodes — the same reasoning that caps the time
+axis at 40 markers, with fifty times as many columns. It fills its parent, redraws
+through a `ResizeObserver`, and matches its bitmap to `devicePixelRatio` so the
+drawing stays sharp on a retina screen. Silence draws as a hairline rather than
+nothing, so a quiet passage reads as quiet and not as a failed drawing.
+
+`html-to-image` copies a canvas through `toDataURL`, so the waveform comes out in the
+JPEG export like everything else.
+
+Not covered by tests: jsdom has neither a 2D canvas context nor `ResizeObserver`. The
+arithmetic it draws is in [`computePeaks`](utilities.md#waveform--peak-extraction),
+which is pure and is tested.
+
+---
+
+## `AudioBar` — attaching and playing a soundtrack
+
+**File:** [src/components/AudioBar.tsx](../src/components/AudioBar.tsx)
+
+Takes fourteen props, all of them from `useAudio` or the project metadata. The ones
+worth knowing:
+
+| Prop              | Type                        | Description                                   |
+| ----------------- | --------------------------- | --------------------------------------------- |
+| `soundtrack`      | `string \| undefined`       | `metadata.soundtrack` — the file it expects   |
+| `audioDuration`   | `number`                    | The file's length, `0` until the browser says |
+| `projectDuration` | `number`                    | `metadata.durationSeconds`                    |
+| `getCurrentTime`  | `() => number`              | Read every frame for the readout              |
+| `onAdoptDuration` | `(seconds: number) => void` | Offers the file's length to the project       |
+
+**With nothing attached** it names the file the project is set to, if there is one, and
+says plainly that the file stays on the machine and is not part of the export. That is
+the whole of the re-attach story: the project stores a name, not a recording.
+
+**With a file attached** it is a transport — play/pause, `mm:ss.t` position, total
+length, the file name, replace and remove.
+
+**The readout is written straight into the DOM** through a ref, in the same
+`requestAnimationFrame` loop pattern as the playhead. It changes sixty times a second;
+state would re-render the bar just as often.
+
+**Keyboard.** Space plays and pauses, `←` and `→` seek five seconds. The handler is on
+`window`, and steps aside when the key belongs to whatever has focus: a field, a
+button, a link, or anything while a dialog is open — a dialog has its own focus trap
+and its own meaning for every one of those keys.
+
+**The length mismatch** is a `role="status"` line offering the file's own length. It
+is offered, never applied on its own: `durationSeconds` is the denominator of every
+position on screen, and shortening it trims or removes cues. Taking it up therefore
+goes through the same confirmation the settings dialog warns about, and lands via
+`saveMetadata(metadata, truncateCues)` so it is undoable.
 
 ---
 
