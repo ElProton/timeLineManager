@@ -1,5 +1,10 @@
 import { describe, it, expect } from "vitest";
-import { formatTime, parseTime, isValidTimeFormat } from "../utils/time";
+import {
+  formatTime,
+  parseTime,
+  isValidTimeFormat,
+  sanitiseFilename,
+} from "../utils/time";
 
 describe("formatTime", () => {
   it("formats 0 seconds as 00:00", () => {
@@ -62,6 +67,17 @@ describe("parseTime", () => {
     expect(parseTime("01:30:00")).toBe(0);
   });
 
+  it("returns 0 for out-of-range seconds", () => {
+    expect(parseTime("00:99")).toBe(0);
+    expect(parseTime("03:60")).toBe(0);
+  });
+
+  it("returns 0 for trailing junk", () => {
+    // parseInt alone would read "01:5abc" as 5.
+    expect(parseTime("01:5abc")).toBe(0);
+    expect(parseTime("01:30 ")).toBe(0);
+  });
+
   it("is inverse of formatTime", () => {
     expect(parseTime(formatTime(90))).toBe(90);
     expect(parseTime(formatTime(0))).toBe(0);
@@ -98,5 +114,51 @@ describe("isValidTimeFormat", () => {
 
   it("rejects extra colons", () => {
     expect(isValidTimeFormat("01:30:00")).toBe(false);
+  });
+
+  it("rejects seconds of 60 or more", () => {
+    // The previous pattern accepted these and quietly reinterpreted them:
+    // "00:99" parsed to 99 seconds and displayed back as "01:39".
+    expect(isValidTimeFormat("00:99")).toBe(false);
+    expect(isValidTimeFormat("03:60")).toBe(false);
+    expect(isValidTimeFormat("12:75")).toBe(false);
+  });
+
+  it("still accepts 59 seconds", () => {
+    expect(isValidTimeFormat("00:59")).toBe(true);
+    expect(isValidTimeFormat("120:59")).toBe(true);
+  });
+});
+
+describe("sanitiseFilename", () => {
+  it("leaves a plain title alone apart from spaces", () => {
+    expect(sanitiseFilename("Opening ceremony")).toBe("Opening_ceremony");
+  });
+
+  it("replaces characters no filesystem accepts", () => {
+    expect(sanitiseFilename("Gala 1/2")).toBe("Gala_1-2");
+    expect(sanitiseFilename('a:b*c?d"e<f>g|h')).toBe("a-b-c-d-e-f-g-h");
+  });
+
+  it("collapses runs of underscores and trims the edges", () => {
+    expect(sanitiseFilename("  spaced   out  ")).toBe("spaced_out");
+    expect(sanitiseFilename("__lead and trail__")).toBe("lead_and_trail");
+  });
+
+  it("strips control characters", () => {
+    expect(sanitiseFilename("a\u0000b\u001fc")).toBe("abc");
+  });
+
+  it("falls back to a usable name when nothing survives", () => {
+    expect(sanitiseFilename("")).toBe("timeline");
+    expect(sanitiseFilename("///")).toBe("timeline");
+  });
+
+  it("caps the length", () => {
+    expect(sanitiseFilename("x".repeat(500))).toHaveLength(100);
+  });
+
+  it("keeps accented characters", () => {
+    expect(sanitiseFilename("Boléro final")).toBe("Boléro_final");
   });
 });

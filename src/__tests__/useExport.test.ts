@@ -10,9 +10,9 @@ vi.mock("html-to-image", () => ({
 
 const mockProject: ProjectData = {
   schemaVersion: 1,
-  metadata: { title: "My Show", musicName: "Song", durationSeconds: 180 },
-  actors: [{ id: "a1", name: "Alice" }],
-  actions: [],
+  metadata: { title: "My Show", soundtrack: "Song", durationSeconds: 180 },
+  tracks: [{ id: "a1", name: "Alice" }],
+  cues: [],
 };
 
 describe("useExport", () => {

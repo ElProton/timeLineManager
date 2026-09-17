@@ -222,8 +222,8 @@ mainteneur à temps plein.
 | --- | --------------------------------------------------- | -------------- |
 | 0   | Décontamination et outillage                        | **Livré**      |
 | 1   | Ouverture open-source du dépôt                      | **Livré**      |
-| 2   | Dé-spécialisation : schéma v2 + correction des bugs | Planifié       |
-| 3   | Réécriture documentaire depuis le code réel         | Planifié       |
+| 2   | Dé-spécialisation : schéma v2 + correction des bugs | **Livré**      |
+| 3   | Réécriture documentaire depuis le code réel         | Partiel        |
 | 4   | Fonctionnalités d'adoption                          | Backlog public |
 
 ### Lot 0 — Décontamination et outillage

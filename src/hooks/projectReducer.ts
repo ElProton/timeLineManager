@@ -1,20 +1,24 @@
-import type { ProjectData, ProjectMetadata, Action, Actor } from "../types";
+import type { ProjectData, ProjectMetadata, Cue, Track } from "../types";
 
 const MAX_HISTORY = 50;
 
 // ---------------------------------------------------------------------------
-// Action types (discriminated union)
+// Events (discriminated union)
+//
+// Named "event" rather than "action" throughout: in this codebase a Cue used to
+// be called an Action, so `action.payload` and a domain action lived in the same
+// scope and read identically. Keep the distinction explicit.
 // ---------------------------------------------------------------------------
 
-export type ProjectAction =
+export type ProjectEvent =
   | { type: "INIT_PROJECT"; payload: ProjectData }
-  | { type: "SAVE_ACTION"; payload: Action }
-  | { type: "DELETE_ACTION"; payload: string }
-  | { type: "SAVE_ACTOR"; payload: Actor }
-  | { type: "DELETE_ACTOR"; payload: string }
+  | { type: "SAVE_CUE"; payload: Cue }
+  | { type: "DELETE_CUE"; payload: string }
+  | { type: "SAVE_TRACK"; payload: Track }
+  | { type: "DELETE_TRACK"; payload: string }
   | {
       type: "SAVE_METADATA";
-      payload: { metadata: ProjectMetadata; truncateActions: boolean };
+      payload: { metadata: ProjectMetadata; truncateCues: boolean };
     }
   | { type: "SET_FILTER"; payload: string | null }
   | { type: "CLEAR_ALL" }
@@ -27,7 +31,7 @@ export type ProjectAction =
 
 export interface ProjectState {
   projectData: ProjectData | null;
-  filteredActorId: string | null;
+  filteredTrackId: string | null;
   /** Snapshots for undo (most recent last). */
   past: ProjectData[];
   /** Snapshots for redo (most recent first). */
@@ -36,7 +40,7 @@ export interface ProjectState {
 
 export const initialState: ProjectState = {
   projectData: null,
-  filteredActorId: null,
+  filteredTrackId: null,
   past: [],
   future: [],
 };
@@ -58,30 +62,30 @@ function pushToHistory(
 
 export function projectReducer(
   state: ProjectState,
-  action: ProjectAction,
+  event: ProjectEvent,
 ): ProjectState {
-  switch (action.type) {
+  switch (event.type) {
     // -- Initialisation (resets history) ------------------------------------
     case "INIT_PROJECT":
       return {
         ...state,
-        projectData: action.payload,
+        projectData: event.payload,
         past: [],
         future: [],
       };
 
-    // -- CRUD: Actions ------------------------------------------------------
-    case "SAVE_ACTION": {
+    // -- CRUD: Cues ---------------------------------------------------------
+    case "SAVE_CUE": {
       if (!state.projectData) return state;
       const data = state.projectData;
-      const exists = data.actions.some((a) => a.id === action.payload.id);
+      const exists = data.cues.some((cue) => cue.id === event.payload.id);
       const newData: ProjectData = {
         ...data,
-        actions: exists
-          ? data.actions.map((a) =>
-              a.id === action.payload.id ? action.payload : a,
+        cues: exists
+          ? data.cues.map((cue) =>
+              cue.id === event.payload.id ? event.payload : cue,
             )
-          : [...data.actions, action.payload],
+          : [...data.cues, event.payload],
       };
       return {
         ...state,
@@ -91,13 +95,11 @@ export function projectReducer(
       };
     }
 
-    case "DELETE_ACTION": {
+    case "DELETE_CUE": {
       if (!state.projectData) return state;
       const newData: ProjectData = {
         ...state.projectData,
-        actions: state.projectData.actions.filter(
-          (a) => a.id !== action.payload,
-        ),
+        cues: state.projectData.cues.filter((cue) => cue.id !== event.payload),
       };
       return {
         ...state,
@@ -107,18 +109,18 @@ export function projectReducer(
       };
     }
 
-    // -- CRUD: Actors -------------------------------------------------------
-    case "SAVE_ACTOR": {
+    // -- CRUD: Tracks -------------------------------------------------------
+    case "SAVE_TRACK": {
       if (!state.projectData) return state;
       const data = state.projectData;
-      const exists = data.actors.some((a) => a.id === action.payload.id);
+      const exists = data.tracks.some((track) => track.id === event.payload.id);
       const newData: ProjectData = {
         ...data,
-        actors: exists
-          ? data.actors.map((a) =>
-              a.id === action.payload.id ? action.payload : a,
+        tracks: exists
+          ? data.tracks.map((track) =>
+              track.id === event.payload.id ? event.payload : track,
             )
-          : [...data.actors, action.payload],
+          : [...data.tracks, event.payload],
       };
       return {
         ...state,
@@ -128,50 +130,51 @@ export function projectReducer(
       };
     }
 
-    case "DELETE_ACTOR": {
+    case "DELETE_TRACK": {
       if (!state.projectData) return state;
       const data = state.projectData;
-      const newActions = data.actions
-        .map((a) => ({
-          ...a,
-          actorIds: a.actorIds.filter((id) => id !== action.payload),
+      // Drop the track from every cue, then drop cues left with no track.
+      const newCues = data.cues
+        .map((cue) => ({
+          ...cue,
+          trackIds: cue.trackIds.filter((id) => id !== event.payload),
         }))
-        .filter((a) => a.actorIds.length > 0);
+        .filter((cue) => cue.trackIds.length > 0);
 
       const newData: ProjectData = {
         ...data,
-        actors: data.actors.filter((a) => a.id !== action.payload),
-        actions: newActions,
+        tracks: data.tracks.filter((track) => track.id !== event.payload),
+        cues: newCues,
       };
       return {
         ...state,
         projectData: newData,
         past: pushToHistory(state.past, state.projectData),
         future: [],
-        filteredActorId:
-          state.filteredActorId === action.payload
+        filteredTrackId:
+          state.filteredTrackId === event.payload
             ? null
-            : state.filteredActorId,
+            : state.filteredTrackId,
       };
     }
 
     // -- Metadata -----------------------------------------------------------
     case "SAVE_METADATA": {
       if (!state.projectData) return state;
-      const { metadata, truncateActions } = action.payload;
-      let newActions = state.projectData.actions;
-      if (truncateActions) {
-        newActions = state.projectData.actions
-          .filter((a) => a.timeStart < metadata.durationSeconds)
-          .map((a) => ({
-            ...a,
-            timeEnd: Math.min(a.timeEnd, metadata.durationSeconds),
+      const { metadata, truncateCues } = event.payload;
+      let newCues = state.projectData.cues;
+      if (truncateCues) {
+        newCues = state.projectData.cues
+          .filter((cue) => cue.timeStart < metadata.durationSeconds)
+          .map((cue) => ({
+            ...cue,
+            timeEnd: Math.min(cue.timeEnd, metadata.durationSeconds),
           }));
       }
       const newData: ProjectData = {
         ...state.projectData,
         metadata,
-        actions: newActions,
+        cues: newCues,
       };
       return {
         ...state,
@@ -183,7 +186,7 @@ export function projectReducer(
 
     // -- UI-only (not undoable) ---------------------------------------------
     case "SET_FILTER":
-      return { ...state, filteredActorId: action.payload };
+      return { ...state, filteredTrackId: event.payload };
 
     case "CLEAR_ALL":
       return { ...initialState };

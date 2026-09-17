@@ -4,99 +4,139 @@
 
 ```
 ProjectData
+├── schemaVersion: number
 ├── metadata: ProjectMetadata
 │     ├── title: string
-│     ├── musicName: string
+│     ├── soundtrack?: string     (facultatif)
 │     └── durationSeconds: number
-├── actors: Actor[]
+├── tracks: Track[]
 │     ├── id: string (UUID)
 │     └── name: string
-└── actions: Action[]
+└── cues: Cue[]
       ├── id: string (UUID)
       ├── description: string
       ├── timeStart: number (secondes)
       ├── timeEnd: number (secondes)
-      ├── actorIds: string[] (refs → Actor.id)
+      ├── trackIds: string[] (refs → Track.id)
       └── color: string (hex)
 ```
 
-## Interfaces TypeScript
-
 Fichier source : [src/types.ts](../src/types.ts)
+
+## Vocabulaire
+
+Le schéma v1 employait le vocabulaire du spectacle vivant : un `Actor` exécutait des
+`Action`. Ces termes ne voyageaient pas hors du théâtre — un pupitre lumière, un
+essaim de drones ou un traiteur ne sont pas des « acteurs ». Le v2 emploie des termes
+que tous les métiers concernés reconnaissent.
+
+| Concept | Définition                                                                    |
+| ------- | ----------------------------------------------------------------------------- |
+| `Track` | Une ligne de la timeline : une personne, une équipe, un appareil, un circuit. |
+| `Cue`   | Un bloc temporel posé sur une ou plusieurs pistes. « Top », en régie.         |
+
+## Interfaces TypeScript
 
 ### `ProjectMetadata`
 
-Métadonnées globales du projet, définies à l'initialisation.
+| Propriété         | Type      | Description                                                                                                                     |
+| ----------------- | --------- | ------------------------------------------------------------------------------------------------------------------------------- |
+| `title`           | `string`  | Nom du projet. Requis, non vide.                                                                                                |
+| `soundtrack`      | `string?` | **Facultatif.** Bande son de référence. Absent si le calage se fait sur une voix off, un time-code vidéo ou un simple minutage. |
+| `durationSeconds` | `number`  | Durée totale. Strictement positive, plafonnée à `MAX_DURATION_SECONDS` (12 h).                                                  |
 
-| Propriété         | Type     | Description                             |
-| ----------------- | -------- | --------------------------------------- |
-| `title`           | `string` | Nom du projet                           |
-| `musicName`       | `string` | Nom de la piste musicale de référence   |
-| `durationSeconds` | `number` | Durée totale de la timeline en secondes |
+### `Track`
 
-### `Actor`
+| Propriété | Type     | Description                                                        |
+| --------- | -------- | ------------------------------------------------------------------ |
+| `id`      | `string` | Identifiant unique (`crypto.randomUUID()`). Unique dans le projet. |
+| `name`    | `string` | Libellé affiché en tête de ligne.                                  |
 
-Représente un acteur/performeur positionné sur une ligne de la timeline.
+### `Cue`
 
-| Propriété | Type     | Description                                            |
-| --------- | -------- | ------------------------------------------------------ |
-| `id`      | `string` | Identifiant unique (UUID v4 via `crypto.randomUUID()`) |
-| `name`    | `string` | Nom d'affichage de l'acteur                            |
-
-### `Action`
-
-Représente un bloc temporel sur la timeline, lié à un ou plusieurs acteurs.
-
-| Propriété     | Type       | Description                                   |
-| ------------- | ---------- | --------------------------------------------- |
-| `id`          | `string`   | Identifiant unique (UUID v4)                  |
-| `description` | `string`   | Libellé affiché sur le bloc timeline          |
-| `timeStart`   | `number`   | Début de l'action en secondes (inclus)        |
-| `timeEnd`     | `number`   | Fin de l'action en secondes (exclus)          |
-| `actorIds`    | `string[]` | Liste d'IDs d'acteurs associés (relation N:N) |
-| `color`       | `string`   | Couleur hex du bloc (ex: `#3b82f6`)           |
+| Propriété     | Type       | Description                                               |
+| ------------- | ---------- | --------------------------------------------------------- |
+| `id`          | `string`   | Identifiant unique (UUID v4).                             |
+| `description` | `string`   | Libellé affiché sur le bloc.                              |
+| `timeStart`   | `number`   | Début en secondes, inclus. `>= 0`.                        |
+| `timeEnd`     | `number`   | Fin en secondes, exclue. Strictement `> timeStart`.       |
+| `trackIds`    | `string[]` | Pistes concernées (relation N:N). Chaque id doit exister. |
+| `color`       | `string`   | Couleur hex, `#rgb` ou `#rrggbb`.                         |
 
 ### `ProjectData`
 
-Agrégat racine contenant l'intégralité de l'état persistable du projet.
-
-| Propriété  | Type              | Description           |
-| ---------- | ----------------- | --------------------- |
-| `metadata` | `ProjectMetadata` | Métadonnées du projet |
-| `actors`   | `Actor[]`         | Liste des acteurs     |
-| `actions`  | `Action[]`        | Liste des actions     |
+| Propriété       | Type              | Description                         |
+| --------------- | ----------------- | ----------------------------------- |
+| `schemaVersion` | `number`          | Version du schéma. Voir ci-dessous. |
+| `metadata`      | `ProjectMetadata` | Métadonnées du projet               |
+| `tracks`        | `Track[]`         | Lignes de la timeline               |
+| `cues`          | `Cue[]`           | Blocs temporels                     |
 
 ## Relations
 
 ```
-Actor (1) ←──── (N) Action.actorIds (N) ────→ (1) Actor
-                    Relation many-to-many implicite
-                    via tableau d'IDs
+Track (1) ←──── (N) Cue.trackIds (N) ────→ (1) Track
+                    Relation N:N implicite
+                    via tableau d'identifiants
 ```
 
-- Une **Action** référence un ou plusieurs **Actors** via `actorIds`.
-- Lors de la suppression d'un Actor, les `actorIds` de toutes les Actions sont nettoyées. Si une Action se retrouve sans acteur, elle est supprimée.
-- Il n'y a pas de contrainte d'unicité sur les plages temporelles : les actions peuvent se chevaucher.
+- Un **Cue** référence une ou plusieurs **Track** via `trackIds`.
+- À la suppression d'une piste, son identifiant est retiré de tous les `trackIds`.
+  Un cue qui se retrouve sans aucune piste est supprimé.
+- Aucune contrainte d'unicité temporelle : les cues peuvent se chevaucher.
 
-## Contraintes de validation
+## Versions du schéma et migration
 
-| Règle                                      | Vérifiée dans                |
-| ------------------------------------------ | ---------------------------- |
-| `timeStart < timeEnd`                      | `ActionModal`                |
-| `0 ≤ timeStart` et `timeEnd ≤ maxDuration` | `ActionModal`                |
-| `actorIds.length ≥ 1`                      | `ActionModal`                |
-| `description` non vide                     | `ActionModal`                |
-| `name` non vide (trim)                     | `ActorModal`                 |
-| `durationSeconds > 0`                      | `ProjectInit`                |
-| Format temporel `mm:ss`                    | `ProjectInit`, `ActionModal` |
+`CURRENT_SCHEMA_VERSION` vaut **2**.
 
-## Palette de couleurs disponibles
+| Version | Forme                                                                |
+| ------- | -------------------------------------------------------------------- |
+| v0      | Sans `schemaVersion`. Fichiers antérieurs au versionnement.          |
+| v1      | `actors` / `actions` / `actorIds`, `metadata.musicName` obligatoire. |
+| v2      | `tracks` / `cues` / `trackIds`, `metadata.soundtrack` facultatif.    |
 
-Définie en dur dans `ActionModal.tsx` :
+La chaîne de migration vit dans [src/utils/migration.ts](../src/utils/migration.ts)
+et s'applique **à l'import fichier comme au chargement du cache**. Elle ne mute jamais
+son entrée.
+
+> **Toute évolution du modèle exige** : incrémenter `CURRENT_SCHEMA_VERSION`, ajouter
+> une étape de migration, et un test couvrant **chaque** version antérieure. Voir
+> [CONTRIBUTING.md](../CONTRIBUTING.md). Un fichier d'exemple v1 est conservé dans
+> [`examples/`](../examples/) précisément pour éprouver cette chaîne.
+
+## Validation
+
+[src/utils/validation.ts](../src/utils/validation.ts) expose `isValidProjectData`,
+**point de passage unique** pour toute donnée non fiable : cache navigateur comme
+fichier importé. Elle s'exécute après la migration.
+
+Auparavant, deux chemins divergeaient : le cache était solidement validé tandis que
+l'import fichier — l'entrée la plus exposée — ne vérifiait que deux champs, laissant
+passer par exemple une durée négative.
+
+| Règle                                           | Vérifiée dans   |
+| ----------------------------------------------- | --------------- |
+| `schemaVersion` entier `>= 1`                   | `validation.ts` |
+| `title` non vide                                | `validation.ts` |
+| `0 < durationSeconds <= MAX_DURATION_SECONDS`   | `validation.ts` |
+| `soundtrack` absent ou chaîne                   | `validation.ts` |
+| `tracks` et `cues` sont des tableaux            | `validation.ts` |
+| identifiants de piste présents et uniques       | `validation.ts` |
+| `0 <= timeStart < timeEnd`, tous deux finis     | `validation.ts` |
+| chaque `trackIds` référence une piste existante | `validation.ts` |
+| `color` au format `#rgb` ou `#rrggbb`           | `validation.ts` |
+| `timeEnd <= durationSeconds`                    | `CueModal`      |
+| `trackIds.length >= 1`                          | `CueModal`      |
+| format temporel `mm:ss`, secondes `<= 59`       | `time.ts`       |
+
+## Palette de couleurs proposée
+
+Définie dans `CueModal.tsx` :
 
 ```
 #ef4444  #f97316  #f59e0b  #84cc16  #22c55e
 #06b6d4  #3b82f6  #6366f1  #a855f7  #ec4899
 ```
 
-10 couleurs de la palette Tailwind CSS (red→pink, nuances 400-500).
+Dix couleurs de la palette Tailwind. La validation accepte n'importe quelle couleur
+hexadécimale, pas seulement celles-ci.

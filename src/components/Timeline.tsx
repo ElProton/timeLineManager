@@ -1,46 +1,45 @@
-import { forwardRef, useState } from "react";
+import { forwardRef, useMemo, useState } from "react";
 import type { CSSProperties } from "react";
-import type { ProjectData, Action, Actor } from "../types";
+import type { ProjectData, Cue, Track } from "../types";
 import { formatTime } from "../utils/time";
 import { Edit2, Trash2 } from "lucide-react";
 import { cn } from "../utils/cn";
+import { markerTimes } from "../utils/timeline";
 
 interface Props {
   data: ProjectData;
-  filteredActorId: string | null;
-  onEditAction: (action: Action) => void;
-  onDeleteAction: (actionId: string) => void;
-  onEditActor: (actor: Actor) => void;
-  onDeleteActor: (actorId: string) => void;
+  filteredTrackId: string | null;
+  onEditCue: (cue: Cue) => void;
+  onDeleteCue: (cueId: string) => void;
+  onEditTrack: (track: Track) => void;
+  onDeleteTrack: (trackId: string) => void;
 }
 
 export const Timeline = forwardRef<HTMLDivElement, Props>(
   (
     {
       data,
-      filteredActorId,
-      onEditAction,
-      onDeleteAction,
-      onEditActor,
-      onDeleteActor,
+      filteredTrackId,
+      onEditCue,
+      onDeleteCue,
+      onEditTrack,
+      onDeleteTrack,
     },
     ref,
   ) => {
-    const [hoveredActionId, setHoveredActionId] = useState<string | null>(null);
+    const [hoveredCueId, setHoveredCueId] = useState<string | null>(null);
 
-    const { metadata, actors, actions } = data;
+    const { metadata, tracks, cues } = data;
     const { durationSeconds } = metadata;
 
-    const visibleActors = filteredActorId
-      ? actors.filter((a) => a.id === filteredActorId)
-      : actors;
+    const visibleTracks = filteredTrackId
+      ? tracks.filter((track) => track.id === filteredTrackId)
+      : tracks;
 
-    // Generate time markers every 30 seconds or 1 minute depending on duration
-    const markers: number[] = [];
-    const step = durationSeconds > 600 ? 60 : 30; // 1 min or 30 sec
-    for (let i = 0; i <= durationSeconds; i += step) {
-      markers.push(i);
-    }
+    const markers = useMemo(
+      () => markerTimes(durationSeconds),
+      [durationSeconds],
+    );
 
     return (
       <div
@@ -48,10 +47,10 @@ export const Timeline = forwardRef<HTMLDivElement, Props>(
         style={{ minWidth: "800px" }}
       >
         <div ref={ref} className="min-w-max p-6 pb-12 bg-white">
-          {/* Music Timeline Header */}
+          {/* Time axis */}
           <div className="flex mb-6">
             <div className="w-48 shrink-0 pr-4 flex items-center justify-end text-neutral-500 font-medium text-sm">
-              {metadata.musicName}
+              {metadata.soundtrack}
             </div>
             <div className="flex-1 relative h-8 bg-neutral-100 rounded-lg border border-neutral-200">
               {markers.map((time) => (
@@ -68,26 +67,23 @@ export const Timeline = forwardRef<HTMLDivElement, Props>(
             </div>
           </div>
 
-          {/* Actor Rows */}
+          {/* Track rows */}
           <div className="space-y-4 relative">
-            {/* Draw vertical connection lines for hovered multi-actor actions */}
-            {hoveredActionId && !filteredActorId && (
+            {/* Vertical band linking the rows of a hovered multi-track cue */}
+            {hoveredCueId && !filteredTrackId && (
               <div className="absolute inset-0 pointer-events-none z-0">
                 {(() => {
-                  const action = actions.find((a) => a.id === hoveredActionId);
-                  if (!action || action.actorIds.length < 2) return null;
-
-                  const left = `${(action.timeStart / durationSeconds) * 100}%`;
-                  const width = `${((action.timeEnd - action.timeStart) / durationSeconds) * 100}%`;
+                  const cue = cues.find((c) => c.id === hoveredCueId);
+                  if (!cue || cue.trackIds.length < 2) return null;
 
                   return (
                     <div
                       className="absolute top-0 bottom-0 border-l-2 border-r-2 border-dashed opacity-30"
                       style={{
-                        left,
-                        width,
-                        borderColor: action.color,
-                        backgroundColor: `${action.color}10`,
+                        left: `${(cue.timeStart / durationSeconds) * 100}%`,
+                        width: `${((cue.timeEnd - cue.timeStart) / durationSeconds) * 100}%`,
+                        borderColor: cue.color,
+                        backgroundColor: `${cue.color}10`,
                       }}
                     />
                   );
@@ -95,40 +91,44 @@ export const Timeline = forwardRef<HTMLDivElement, Props>(
               </div>
             )}
 
-            {visibleActors.map((actor) => {
-              const actorActions = actions.filter((a) =>
-                a.actorIds.includes(actor.id),
+            {visibleTracks.map((track) => {
+              const trackCues = cues.filter((cue) =>
+                cue.trackIds.includes(track.id),
               );
 
               return (
-                <div key={actor.id} className="flex group relative z-10">
-                  {/* Actor Label */}
+                <div key={track.id} className="flex group relative z-10">
+                  {/* Track label */}
                   <div className="w-48 shrink-0 pr-4 flex items-center justify-between border-r border-neutral-200 bg-white">
                     <span
                       className="font-medium text-neutral-800 truncate"
-                      title={actor.name}
+                      title={track.name}
                     >
-                      {actor.name}
+                      {track.name}
                     </span>
-                    <div className="opacity-0 group-hover:opacity-100 transition-opacity flex gap-1">
+                    <div className="opacity-0 group-hover:opacity-100 focus-within:opacity-100 transition-opacity flex gap-1">
                       <button
-                        onClick={() => onEditActor(actor)}
+                        type="button"
+                        onClick={() => onEditTrack(track)}
                         className="p-1 text-neutral-400 hover:text-indigo-600 rounded"
-                        title="Edit Actor"
+                        aria-label={`Edit track ${track.name}`}
+                        title="Edit track"
                       >
                         <Edit2 className="w-3.5 h-3.5" />
                       </button>
                       <button
-                        onClick={() => onDeleteActor(actor.id)}
+                        type="button"
+                        onClick={() => onDeleteTrack(track.id)}
                         className="p-1 text-neutral-400 hover:text-red-600 rounded"
-                        title="Delete Actor"
+                        aria-label={`Delete track ${track.name}`}
+                        title="Delete track"
                       >
                         <Trash2 className="w-3.5 h-3.5" />
                       </button>
                     </div>
                   </div>
 
-                  {/* Actor Timeline Track */}
+                  {/* Track lane */}
                   <div className="flex-1 relative h-20 bg-neutral-50/50 border-y border-r border-neutral-100 rounded-r-lg group-hover:bg-neutral-50 transition-colors">
                     {/* Grid lines */}
                     {markers.map((time) => (
@@ -139,42 +139,55 @@ export const Timeline = forwardRef<HTMLDivElement, Props>(
                       />
                     ))}
 
-                    {/* Actions */}
-                    {actorActions.map((action) => {
-                      const left = `${(action.timeStart / durationSeconds) * 100}%`;
-                      const width = `${((action.timeEnd - action.timeStart) / durationSeconds) * 100}%`;
-                      const isHovered = hoveredActionId === action.id;
-                      const isMulti = action.actorIds.length > 1;
+                    {/* Cues */}
+                    {trackCues.map((cue) => {
+                      const isHovered = hoveredCueId === cue.id;
+                      const isMulti = cue.trackIds.length > 1;
 
                       return (
                         <div
-                          key={action.id}
+                          key={cue.id}
+                          role="button"
+                          tabIndex={0}
+                          aria-label={`${cue.description}, ${formatTime(cue.timeStart)} to ${formatTime(cue.timeEnd)}`}
                           className={cn(
                             "absolute top-1.5 bottom-1.5 rounded-md shadow-sm border flex items-start p-1 overflow-hidden transition-all cursor-pointer group/action",
                             isHovered
                               ? "ring-2 ring-offset-1 z-20"
-                              : "z-10 hover:z-20",
+                              : "z-10 hover:z-20 focus:z-20",
                           )}
                           style={
                             {
-                              left,
-                              width,
-                              backgroundColor: `${action.color}20`,
-                              borderColor: action.color,
-                              color: action.color,
-                              "--tw-ring-color": action.color,
+                              left: `${(cue.timeStart / durationSeconds) * 100}%`,
+                              width: `${((cue.timeEnd - cue.timeStart) / durationSeconds) * 100}%`,
+                              backgroundColor: `${cue.color}20`,
+                              borderColor: cue.color,
+                              color: cue.color,
+                              // Tailwind's ring colour is a custom property. An
+                              // earlier version set `ringColor`, which is not a
+                              // DOM style property, so React dropped it and the
+                              // ring always drew in the default colour.
+                              "--tw-ring-color": cue.color,
                             } as CSSProperties
                           }
-                          onMouseEnter={() => setHoveredActionId(action.id)}
-                          onMouseLeave={() => setHoveredActionId(null)}
-                          onClick={() => onEditAction(action)}
+                          onMouseEnter={() => setHoveredCueId(cue.id)}
+                          onMouseLeave={() => setHoveredCueId(null)}
+                          onFocus={() => setHoveredCueId(cue.id)}
+                          onBlur={() => setHoveredCueId(null)}
+                          onClick={() => onEditCue(cue)}
+                          onKeyDown={(event) => {
+                            if (event.key === "Enter" || event.key === " ") {
+                              event.preventDefault();
+                              onEditCue(cue);
+                            }
+                          }}
                         >
                           <div className="flex-1 text-[10px] leading-tight font-semibold flex items-start gap-1 overflow-hidden h-full w-full">
                             {isMulti && (
                               <div
                                 className="w-1.5 h-1.5 rounded-full shrink-0 mt-1"
-                                style={{ backgroundColor: action.color }}
-                                title="Multi-actor action"
+                                style={{ backgroundColor: cue.color }}
+                                title="Runs on several tracks"
                               />
                             )}
                             <span
@@ -185,19 +198,20 @@ export const Timeline = forwardRef<HTMLDivElement, Props>(
                                 WebkitBoxOrient: "vertical",
                               }}
                             >
-                              {action.description}
+                              {cue.description}
                             </span>
                           </div>
 
-                          {/* Action Controls */}
-                          <div className="absolute top-1 right-1 opacity-0 group-hover/action:opacity-100 transition-opacity flex gap-1 bg-white/90 backdrop-blur-sm rounded shadow-sm z-30">
+                          <div className="absolute top-1 right-1 opacity-0 group-hover/action:opacity-100 focus-within:opacity-100 transition-opacity flex gap-1 bg-white/90 backdrop-blur-sm rounded shadow-sm z-30">
                             <button
+                              type="button"
                               onClick={(e) => {
                                 e.stopPropagation();
-                                onDeleteAction(action.id);
+                                onDeleteCue(cue.id);
                               }}
                               className="p-1 text-neutral-500 hover:text-red-600 rounded"
-                              title="Delete Action"
+                              aria-label={`Delete cue ${cue.description}`}
+                              title="Delete cue"
                             >
                               <Trash2 className="w-3 h-3" />
                             </button>
@@ -210,9 +224,9 @@ export const Timeline = forwardRef<HTMLDivElement, Props>(
               );
             })}
 
-            {visibleActors.length === 0 && (
+            {visibleTracks.length === 0 && (
               <div className="py-12 text-center text-neutral-500 italic border-2 border-dashed border-neutral-200 rounded-xl">
-                No actors to display. Add an actor to get started.
+                No tracks to display. Add a track to get started.
               </div>
             )}
           </div>

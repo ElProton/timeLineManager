@@ -1,31 +1,31 @@
 import { useState, useCallback } from "react";
-import type { Action, Actor } from "../types";
+import type { Cue, Track } from "../types";
 
 export function useModals() {
-  const [isActionModalOpen, setIsActionModalOpen] = useState(false);
-  const [editingAction, setEditingAction] = useState<Action | null>(null);
+  const [isCueModalOpen, setIsCueModalOpen] = useState(false);
+  const [editingCue, setEditingCue] = useState<Cue | null>(null);
 
-  const [isActorModalOpen, setIsActorModalOpen] = useState(false);
-  const [editingActor, setEditingActor] = useState<Actor | null>(null);
+  const [isTrackModalOpen, setIsTrackModalOpen] = useState(false);
+  const [editingTrack, setEditingTrack] = useState<Track | null>(null);
 
   const [isMetadataModalOpen, setIsMetadataModalOpen] = useState(false);
 
-  const openActionModal = useCallback((action?: Action | null) => {
-    setEditingAction(action ?? null);
-    setIsActionModalOpen(true);
+  const openCueModal = useCallback((cue?: Cue | null) => {
+    setEditingCue(cue ?? null);
+    setIsCueModalOpen(true);
   }, []);
 
-  const closeActionModal = useCallback(() => {
-    setIsActionModalOpen(false);
+  const closeCueModal = useCallback(() => {
+    setIsCueModalOpen(false);
   }, []);
 
-  const openActorModal = useCallback((actor?: Actor | null) => {
-    setEditingActor(actor ?? null);
-    setIsActorModalOpen(true);
+  const openTrackModal = useCallback((track?: Track | null) => {
+    setEditingTrack(track ?? null);
+    setIsTrackModalOpen(true);
   }, []);
 
-  const closeActorModal = useCallback(() => {
-    setIsActorModalOpen(false);
+  const closeTrackModal = useCallback(() => {
+    setIsTrackModalOpen(false);
   }, []);
 
   const openMetadataModal = useCallback(() => {
@@ -37,17 +37,17 @@ export function useModals() {
   }, []);
 
   return {
-    // Action modal
-    isActionModalOpen,
-    editingAction,
-    openActionModal,
-    closeActionModal,
+    // Cue modal
+    isCueModalOpen,
+    editingCue,
+    openCueModal,
+    closeCueModal,
 
-    // Actor modal
-    isActorModalOpen,
-    editingActor,
-    openActorModal,
-    closeActorModal,
+    // Track modal
+    isTrackModalOpen,
+    editingTrack,
+    openTrackModal,
+    closeTrackModal,
 
     // Metadata modal
     isMetadataModalOpen,

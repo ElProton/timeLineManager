@@ -4,22 +4,22 @@ import {
   initialState,
   type ProjectState,
 } from "../hooks/projectReducer";
-import type { ProjectData, Action, Actor } from "../types";
+import type { ProjectData, Cue, Track } from "../types";
 
 const baseProject: ProjectData = {
   schemaVersion: 1,
-  metadata: { title: "Show", musicName: "Song", durationSeconds: 180 },
-  actors: [
+  metadata: { title: "Show", soundtrack: "Song", durationSeconds: 180 },
+  tracks: [
     { id: "a1", name: "Alice" },
     { id: "a2", name: "Bob" },
   ],
-  actions: [
+  cues: [
     {
       id: "act1",
       description: "Enter",
       timeStart: 0,
       timeEnd: 30,
-      actorIds: ["a1"],
+      trackIds: ["a1"],
       color: "#ef4444",
     },
     {
@@ -27,7 +27,7 @@ const baseProject: ProjectData = {
       description: "Cross",
       timeStart: 10,
       timeEnd: 60,
-      actorIds: ["a1", "a2"],
+      trackIds: ["a1", "a2"],
       color: "#3b82f6",
     },
   ],
@@ -55,37 +55,37 @@ describe("projectReducer", () => {
     });
   });
 
-  describe("SAVE_ACTION", () => {
+  describe("SAVE_CUE", () => {
     it("adds a new action", () => {
       const state = stateWith(baseProject);
-      const newAction: Action = {
+      const newAction: Cue = {
         id: "act3",
         description: "Exit",
         timeStart: 60,
         timeEnd: 90,
-        actorIds: ["a2"],
+        trackIds: ["a2"],
         color: "#22c55e",
       };
       const result = projectReducer(state, {
-        type: "SAVE_ACTION",
+        type: "SAVE_CUE",
         payload: newAction,
       });
-      expect(result.projectData!.actions).toHaveLength(3);
-      expect(result.projectData!.actions[2]).toEqual(newAction);
+      expect(result.projectData!.cues).toHaveLength(3);
+      expect(result.projectData!.cues[2]).toEqual(newAction);
     });
 
     it("updates an existing action", () => {
       const state = stateWith(baseProject);
-      const updated: Action = {
-        ...baseProject.actions[0],
+      const updated: Cue = {
+        ...baseProject.cues[0],
         description: "Updated",
       };
       const result = projectReducer(state, {
-        type: "SAVE_ACTION",
+        type: "SAVE_CUE",
         payload: updated,
       });
-      expect(result.projectData!.actions).toHaveLength(2);
-      expect(result.projectData!.actions[0].description).toBe("Updated");
+      expect(result.projectData!.cues).toHaveLength(2);
+      expect(result.projectData!.cues[0].description).toBe("Updated");
     });
 
     it("pushes to history and clears future", () => {
@@ -93,16 +93,16 @@ describe("projectReducer", () => {
         ...stateWith(baseProject),
         future: [baseProject],
       };
-      const newAction: Action = {
+      const newAction: Cue = {
         id: "act3",
         description: "X",
         timeStart: 0,
         timeEnd: 10,
-        actorIds: ["a1"],
+        trackIds: ["a1"],
         color: "#000",
       };
       const result = projectReducer(state, {
-        type: "SAVE_ACTION",
+        type: "SAVE_CUE",
         payload: newAction,
       });
       expect(result.past).toHaveLength(1);
@@ -112,92 +112,92 @@ describe("projectReducer", () => {
 
     it("does nothing when projectData is null", () => {
       const result = projectReducer(initialState, {
-        type: "SAVE_ACTION",
-        payload: baseProject.actions[0],
+        type: "SAVE_CUE",
+        payload: baseProject.cues[0],
       });
       expect(result).toBe(initialState);
     });
   });
 
-  describe("DELETE_ACTION", () => {
+  describe("DELETE_CUE", () => {
     it("removes the action", () => {
       const state = stateWith(baseProject);
       const result = projectReducer(state, {
-        type: "DELETE_ACTION",
+        type: "DELETE_CUE",
         payload: "act1",
       });
-      expect(result.projectData!.actions).toHaveLength(1);
-      expect(result.projectData!.actions[0].id).toBe("act2");
+      expect(result.projectData!.cues).toHaveLength(1);
+      expect(result.projectData!.cues[0].id).toBe("act2");
     });
 
     it("pushes to history", () => {
       const state = stateWith(baseProject);
       const result = projectReducer(state, {
-        type: "DELETE_ACTION",
+        type: "DELETE_CUE",
         payload: "act1",
       });
       expect(result.past).toHaveLength(1);
     });
   });
 
-  describe("SAVE_ACTOR", () => {
-    it("adds a new actor", () => {
+  describe("SAVE_TRACK", () => {
+    it("adds a new track", () => {
       const state = stateWith(baseProject);
-      const newActor: Actor = { id: "a3", name: "Charlie" };
+      const newActor: Track = { id: "a3", name: "Charlie" };
       const result = projectReducer(state, {
-        type: "SAVE_ACTOR",
+        type: "SAVE_TRACK",
         payload: newActor,
       });
-      expect(result.projectData!.actors).toHaveLength(3);
+      expect(result.projectData!.tracks).toHaveLength(3);
     });
 
-    it("updates an existing actor", () => {
+    it("updates an existing track", () => {
       const state = stateWith(baseProject);
       const result = projectReducer(state, {
-        type: "SAVE_ACTOR",
+        type: "SAVE_TRACK",
         payload: { id: "a1", name: "Alicia" },
       });
-      expect(result.projectData!.actors[0].name).toBe("Alicia");
-      expect(result.projectData!.actors).toHaveLength(2);
+      expect(result.projectData!.tracks[0].name).toBe("Alicia");
+      expect(result.projectData!.tracks).toHaveLength(2);
     });
   });
 
-  describe("DELETE_ACTOR", () => {
-    it("removes actor and cleans up orphan actions", () => {
+  describe("DELETE_TRACK", () => {
+    it("removes track and cleans up orphan cues", () => {
       const state = stateWith(baseProject);
       const result = projectReducer(state, {
-        type: "DELETE_ACTOR",
+        type: "DELETE_TRACK",
         payload: "a1",
       });
-      expect(result.projectData!.actors).toHaveLength(1);
-      expect(result.projectData!.actors[0].id).toBe("a2");
+      expect(result.projectData!.tracks).toHaveLength(1);
+      expect(result.projectData!.tracks[0].id).toBe("a2");
       // act1 had only a1, act2 had a1+a2
-      expect(result.projectData!.actions).toHaveLength(1);
-      expect(result.projectData!.actions[0].actorIds).toEqual(["a2"]);
+      expect(result.projectData!.cues).toHaveLength(1);
+      expect(result.projectData!.cues[0].trackIds).toEqual(["a2"]);
     });
 
-    it("resets filteredActorId when deleted actor was filtered", () => {
+    it("resets filteredTrackId when deleted track was filtered", () => {
       const state: ProjectState = {
         ...stateWith(baseProject),
-        filteredActorId: "a1",
+        filteredTrackId: "a1",
       };
       const result = projectReducer(state, {
-        type: "DELETE_ACTOR",
+        type: "DELETE_TRACK",
         payload: "a1",
       });
-      expect(result.filteredActorId).toBeNull();
+      expect(result.filteredTrackId).toBeNull();
     });
 
-    it("keeps filteredActorId when a different actor is deleted", () => {
+    it("keeps filteredTrackId when a different track is deleted", () => {
       const state: ProjectState = {
         ...stateWith(baseProject),
-        filteredActorId: "a2",
+        filteredTrackId: "a2",
       };
       const result = projectReducer(state, {
-        type: "DELETE_ACTOR",
+        type: "DELETE_TRACK",
         payload: "a1",
       });
-      expect(result.filteredActorId).toBe("a2");
+      expect(result.filteredTrackId).toBe("a2");
     });
   });
 
@@ -206,44 +206,44 @@ describe("projectReducer", () => {
       const state = stateWith(baseProject);
       const newMeta = {
         title: "New",
-        musicName: "Track",
+        soundtrack: "Track",
         durationSeconds: 300,
       };
       const result = projectReducer(state, {
         type: "SAVE_METADATA",
-        payload: { metadata: newMeta, truncateActions: false },
+        payload: { metadata: newMeta, truncateCues: false },
       });
       expect(result.projectData!.metadata).toEqual(newMeta);
-      expect(result.projectData!.actions).toHaveLength(2);
+      expect(result.projectData!.cues).toHaveLength(2);
     });
 
-    it("truncates actions when duration is reduced", () => {
+    it("truncates cues when duration is reduced", () => {
       const state = stateWith(baseProject);
       const newMeta = {
         title: "Show",
-        musicName: "Song",
+        soundtrack: "Song",
         durationSeconds: 20,
       };
       const result = projectReducer(state, {
         type: "SAVE_METADATA",
-        payload: { metadata: newMeta, truncateActions: true },
+        payload: { metadata: newMeta, truncateCues: true },
       });
-      expect(result.projectData!.actions).toHaveLength(2);
-      expect(result.projectData!.actions[0].timeEnd).toBe(20);
-      expect(result.projectData!.actions[1].timeEnd).toBe(20);
+      expect(result.projectData!.cues).toHaveLength(2);
+      expect(result.projectData!.cues[0].timeEnd).toBe(20);
+      expect(result.projectData!.cues[1].timeEnd).toBe(20);
     });
 
-    it("removes actions starting after new duration", () => {
+    it("removes cues starting after new duration", () => {
       const project: ProjectData = {
         ...baseProject,
-        actions: [
-          ...baseProject.actions,
+        cues: [
+          ...baseProject.cues,
           {
             id: "act3",
             description: "Late",
             timeStart: 170,
             timeEnd: 180,
-            actorIds: ["a1"],
+            trackIds: ["a1"],
             color: "#000",
           },
         ],
@@ -251,36 +251,36 @@ describe("projectReducer", () => {
       const state = stateWith(project);
       const newMeta = {
         title: "Show",
-        musicName: "Song",
+        soundtrack: "Song",
         durationSeconds: 100,
       };
       const result = projectReducer(state, {
         type: "SAVE_METADATA",
-        payload: { metadata: newMeta, truncateActions: true },
+        payload: { metadata: newMeta, truncateCues: true },
       });
-      expect(result.projectData!.actions).toHaveLength(2);
+      expect(result.projectData!.cues).toHaveLength(2);
     });
   });
 
   describe("SET_FILTER", () => {
-    it("sets filteredActorId", () => {
+    it("sets filteredTrackId", () => {
       const result = projectReducer(initialState, {
         type: "SET_FILTER",
         payload: "a1",
       });
-      expect(result.filteredActorId).toBe("a1");
+      expect(result.filteredTrackId).toBe("a1");
     });
 
-    it("clears filteredActorId", () => {
+    it("clears filteredTrackId", () => {
       const state: ProjectState = {
         ...initialState,
-        filteredActorId: "a1",
+        filteredTrackId: "a1",
       };
       const result = projectReducer(state, {
         type: "SET_FILTER",
         payload: null,
       });
-      expect(result.filteredActorId).toBeNull();
+      expect(result.filteredTrackId).toBeNull();
     });
 
     it("does not affect history", () => {
@@ -298,7 +298,7 @@ describe("projectReducer", () => {
     it("resets to initial state", () => {
       const state: ProjectState = {
         projectData: baseProject,
-        filteredActorId: "a1",
+        filteredTrackId: "a1",
         past: [baseProject],
         future: [baseProject],
       };
@@ -311,11 +311,11 @@ describe("projectReducer", () => {
     it("restores previous state from past", () => {
       const previousProject: ProjectData = {
         ...baseProject,
-        actions: [],
+        cues: [],
       };
       const state: ProjectState = {
         projectData: baseProject,
-        filteredActorId: null,
+        filteredTrackId: null,
         past: [previousProject],
         future: [],
       };
@@ -337,14 +337,14 @@ describe("projectReducer", () => {
     });
 
     it("handles multiple undos", () => {
-      const v1: ProjectData = { ...baseProject, actions: [] };
+      const v1: ProjectData = { ...baseProject, cues: [] };
       const v2: ProjectData = {
         ...baseProject,
-        actors: [{ id: "a1", name: "Alice" }],
+        tracks: [{ id: "a1", name: "Alice" }],
       };
       const state: ProjectState = {
         projectData: baseProject,
-        filteredActorId: null,
+        filteredTrackId: null,
         past: [v1, v2],
         future: [],
       };
@@ -363,12 +363,12 @@ describe("projectReducer", () => {
     it("restores next state from future", () => {
       const futureProject: ProjectData = {
         ...baseProject,
-        actions: [...baseProject.actions],
+        cues: [...baseProject.cues],
       };
-      const currentProject: ProjectData = { ...baseProject, actions: [] };
+      const currentProject: ProjectData = { ...baseProject, cues: [] };
       const state: ProjectState = {
         projectData: currentProject,
-        filteredActorId: null,
+        filteredTrackId: null,
         past: [],
         future: [futureProject],
       };
@@ -390,13 +390,13 @@ describe("projectReducer", () => {
       let state = stateWith(baseProject);
       for (let i = 0; i < 60; i++) {
         state = projectReducer(state, {
-          type: "SAVE_ACTION",
+          type: "SAVE_CUE",
           payload: {
             id: `act-${i}`,
-            description: `Action ${i}`,
+            description: `Cue ${i}`,
             timeStart: 0,
             timeEnd: 10,
-            actorIds: ["a1"],
+            trackIds: ["a1"],
             color: "#000",
           },
         });
@@ -411,13 +411,13 @@ describe("projectReducer", () => {
 
       // Perform an action
       const s1 = projectReducer(state, {
-        type: "SAVE_ACTION",
+        type: "SAVE_CUE",
         payload: {
           id: "act3",
           description: "X",
           timeStart: 0,
           timeEnd: 10,
-          actorIds: ["a1"],
+          trackIds: ["a1"],
           color: "#000",
         },
       });
@@ -429,7 +429,7 @@ describe("projectReducer", () => {
 
       // New action should clear future
       const s3 = projectReducer(s2, {
-        type: "SAVE_ACTOR",
+        type: "SAVE_TRACK",
         payload: { id: "a3", name: "Charlie" },
       });
       expect(s3.future).toEqual([]);

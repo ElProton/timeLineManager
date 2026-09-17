@@ -33,8 +33,9 @@ Two principles hold across everything below:
 
 ## 1. Generic vocabulary — _planned, schema v2_
 
-The data model still uses the vocabulary of the original use case. It is being
-renamed, with automatic migration so existing JSON files keep opening.
+The data model used the vocabulary of the original use case. It has been renamed,
+with automatic migration so existing JSON files keep opening — there is a v1 file in
+[`examples/`](examples/) that exercises exactly that.
 
 | Today                  | Becomes                 | Why                                                                                        |
 | ---------------------- | ----------------------- | ------------------------------------------------------------------------------------------ |
@@ -42,10 +43,8 @@ renamed, with automatic migration so existing JSON files keep opening.
 | `Action`               | `Cue`                   | "Cue" is the standard term across live performance, broadcast and events.                  |
 | `musicName` (required) | `soundtrack` (optional) | You might be timing against a voice-over, a video timecode or a minute-by-minute brief.    |
 
-Placeholders like "Boléro", "Final Tableau" and "Enter Stage Left" go with it.
-
-🔵 **[Schema v2 and migration]** — the migration chain and its tests already exist in
-`src/utils/migration.ts`; this extends them.
+Placeholders like "Boléro", "Final Tableau" and "Enter Stage Left" went with it, and
+`metadata.musicName` became the optional `metadata.soundtrack`.
 
 ---
 
@@ -90,7 +89,7 @@ thing that makes real use painful.
   [`docs/adr/001-layer-system.md`](docs/adr/001-layer-system.md) — the reasoning
   holds, the implementation predates the current architecture and needs redoing.
 - 🟢 **Colour per track, and a customisable palette.** Ten colours are currently
-  hard-coded in `ActionModal.tsx`.
+  hard-coded in `CueModal.tsx`.
 
 ---
 
@@ -122,23 +121,19 @@ lighting desk.
 
 Known defects, each small and self-contained. Good places to start.
 
-- 🟢 **`00:99` is accepted as a valid time** and silently becomes `01:39`.
-  `isValidTimeFormat` does not bound the seconds field.
-- 🟢 **A typo in the duration can freeze the tab.** `9999:00` generates ten thousand
-  time markers per track row.
-- 🟢 **Import validation is weaker than cache validation.** `isValidProjectData` in
-  `storage.ts` is thorough but only guards the cache; the file import path checks
-  almost nothing, so a negative duration gets through.
-- 🟢 **`migrateProject` mutates its argument** instead of copying it.
-- 🟢 **Exported filenames are not sanitised** — a project called `Gala 1/2` produces a
-  broken filename.
-- 🟢 **Native `confirm()` and `alert()`** are used in five places: unstyled,
-  untranslatable and blocked in some embedded contexts.
-- 🟢 **No React error boundary** — a render error blanks the page silently.
-- 🔵 **`beforeunload` protection is specified but never implemented**
-  (see `docs/specs/cache_local_autosave.md` §2.1).
-- 🔵 **No component tests.** The utilities, reducer and hooks are well covered;
-  the components are not covered at all.
+Most of the defects found in the first audit are fixed. What is left:
+
+- 🔵 **Component test coverage is thin.** The utilities, reducer, hooks, `Modal` and
+  the confirmation flow are covered; the form modals, `Timeline` and `ProjectInit`
+  are not.
+- 🔵 **No overlap warning** when one track carries two cues at the same moment.
+- 🟢 **The Inter font loads from Google Fonts at runtime**, so the app is not fully
+  offline-capable and makes one external request. Self-hosting it would fix both.
+
+Already fixed, listed so nobody re-reports them: `00:99` accepted as a time, a
+mistyped duration freezing the tab, import validation weaker than cache validation, a
+mutating `migrateProject`, unsanitised export filenames, native `confirm()`/`alert()`,
+no error boundary, and the unimplemented `beforeunload` guard.
 
 ---
 

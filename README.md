@@ -19,13 +19,15 @@ lives in your own browser storage and in the JSON file you export.
 > [MAINTENANCE.md](docs/MAINTENANCE.md) first to know what level of support to expect.
 
 **[Try it →](https://elproton.github.io/timeLineManager/)** — nothing to install.
+Import one of the [example projects](examples/) to see a filled-in timeline.
 
 ## Features
 
-- Time axis derived from a track duration, with automatic `mm:ss` markers
-- One row per participant, one coloured block per timed action
-- Actions can span several participants, highlighted together on hover
-- Filter the view down to a single participant
+- Time axis derived from a soundtrack duration, with automatic `mm:ss` markers
+- One **track** per row — a person, a team, a device, a channel
+- One coloured **cue** per timed block; a cue can span several tracks and is
+  highlighted across all of them on hover
+- Filter the view down to a single track
 - Undo / redo across every edit
 - Automatic save to browser storage, with session recovery on reload
 - Import and export as a versioned JSON file, with automatic schema migration
@@ -67,7 +69,8 @@ is written on every change. It never leaves your machine. Use **Save JSON** to k
 copy you can archive, share or re-import later; **Reset** clears the stored project.
 
 Exported files carry a `schemaVersion`, and older files are migrated automatically
-when imported.
+when imported — including projects saved before the tracks-and-cues rename. See
+[the data model](docs/data_model.md).
 
 ## Tech stack
 
@@ -78,13 +81,14 @@ React 19, TypeScript, Vite 6, Tailwind CSS 4, Vitest. No backend, no external AP
 - [Development setup](docs/dev_setup.md) — start here
 - [Architecture](docs/architecture.md), [components](docs/components.md),
   [data model](docs/data_model.md), [utilities](docs/utilities.md)
-- [Architecture decisions](docs/adr/) and [specifications](docs/specs/)
+- [Architecture decisions](docs/adr/), [specifications](docs/specs/) and [example projects](examples/)
 - [Roadmap](ROADMAP.md) — what is planned and what is open to contribution
 - [Maintenance policy](docs/MAINTENANCE.md) — how this project is looked after
 - [Security policy](SECURITY.md)
 
-> Parts of `docs/` still describe an earlier state of the code and are being
-> rewritten. `dev_setup.md` is current.
+> `architecture.md` and `components.md` still describe an earlier state of the
+> code and are being rewritten. `data_model.md`, `dev_setup.md` and `utilities.md`
+> are current.
 
 ## Contributing
 

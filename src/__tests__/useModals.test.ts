@@ -1,81 +1,81 @@
 import { describe, it, expect } from "vitest";
 import { renderHook, act } from "@testing-library/react";
 import { useModals } from "../hooks/useModals";
-import type { Action, Actor } from "../types";
+import type { Cue, Track } from "../types";
 
-const mockAction: Action = {
+const mockCue: Cue = {
   id: "act1",
   description: "Enter",
   timeStart: 0,
   timeEnd: 30,
-  actorIds: ["a1"],
+  trackIds: ["a1"],
   color: "#ef4444",
 };
 
-const mockActor: Actor = { id: "a1", name: "Alice" };
+const mockTrack: Track = { id: "a1", name: "Alice" };
 
 describe("useModals", () => {
-  describe("action modal", () => {
+  describe("cue modal", () => {
     it("starts closed with no editing action", () => {
       const { result } = renderHook(() => useModals());
-      expect(result.current.isActionModalOpen).toBe(false);
-      expect(result.current.editingAction).toBeNull();
+      expect(result.current.isCueModalOpen).toBe(false);
+      expect(result.current.editingCue).toBeNull();
     });
 
     it("opens for new action (no argument)", () => {
       const { result } = renderHook(() => useModals());
-      act(() => result.current.openActionModal());
+      act(() => result.current.openCueModal());
 
-      expect(result.current.isActionModalOpen).toBe(true);
-      expect(result.current.editingAction).toBeNull();
+      expect(result.current.isCueModalOpen).toBe(true);
+      expect(result.current.editingCue).toBeNull();
     });
 
     it("opens for editing an existing action", () => {
       const { result } = renderHook(() => useModals());
-      act(() => result.current.openActionModal(mockAction));
+      act(() => result.current.openCueModal(mockCue));
 
-      expect(result.current.isActionModalOpen).toBe(true);
-      expect(result.current.editingAction).toEqual(mockAction);
+      expect(result.current.isCueModalOpen).toBe(true);
+      expect(result.current.editingCue).toEqual(mockCue);
     });
 
     it("closes action modal", () => {
       const { result } = renderHook(() => useModals());
-      act(() => result.current.openActionModal(mockAction));
-      act(() => result.current.closeActionModal());
+      act(() => result.current.openCueModal(mockCue));
+      act(() => result.current.closeCueModal());
 
-      expect(result.current.isActionModalOpen).toBe(false);
+      expect(result.current.isCueModalOpen).toBe(false);
     });
   });
 
-  describe("actor modal", () => {
-    it("starts closed with no editing actor", () => {
+  describe("track modal", () => {
+    it("starts closed with no editing track", () => {
       const { result } = renderHook(() => useModals());
-      expect(result.current.isActorModalOpen).toBe(false);
-      expect(result.current.editingActor).toBeNull();
+      expect(result.current.isTrackModalOpen).toBe(false);
+      expect(result.current.editingTrack).toBeNull();
     });
 
-    it("opens for new actor", () => {
+    it("opens for new track", () => {
       const { result } = renderHook(() => useModals());
-      act(() => result.current.openActorModal());
+      act(() => result.current.openTrackModal());
 
-      expect(result.current.isActorModalOpen).toBe(true);
-      expect(result.current.editingActor).toBeNull();
+      expect(result.current.isTrackModalOpen).toBe(true);
+      expect(result.current.editingTrack).toBeNull();
     });
 
-    it("opens for editing an existing actor", () => {
+    it("opens for editing an existing track", () => {
       const { result } = renderHook(() => useModals());
-      act(() => result.current.openActorModal(mockActor));
+      act(() => result.current.openTrackModal(mockTrack));
 
-      expect(result.current.isActorModalOpen).toBe(true);
-      expect(result.current.editingActor).toEqual(mockActor);
+      expect(result.current.isTrackModalOpen).toBe(true);
+      expect(result.current.editingTrack).toEqual(mockTrack);
     });
 
-    it("closes actor modal", () => {
+    it("closes track modal", () => {
       const { result } = renderHook(() => useModals());
-      act(() => result.current.openActorModal());
-      act(() => result.current.closeActorModal());
+      act(() => result.current.openTrackModal());
+      act(() => result.current.closeTrackModal());
 
-      expect(result.current.isActorModalOpen).toBe(false);
+      expect(result.current.isTrackModalOpen).toBe(false);
     });
   });
 
@@ -99,14 +99,14 @@ describe("useModals", () => {
     it("opening one does not affect others", () => {
       const { result } = renderHook(() => useModals());
 
-      act(() => result.current.openActionModal());
-      expect(result.current.isActionModalOpen).toBe(true);
-      expect(result.current.isActorModalOpen).toBe(false);
+      act(() => result.current.openCueModal());
+      expect(result.current.isCueModalOpen).toBe(true);
+      expect(result.current.isTrackModalOpen).toBe(false);
       expect(result.current.isMetadataModalOpen).toBe(false);
 
-      act(() => result.current.openActorModal());
-      expect(result.current.isActorModalOpen).toBe(true);
-      expect(result.current.isActionModalOpen).toBe(true); // still open
+      act(() => result.current.openTrackModal());
+      expect(result.current.isTrackModalOpen).toBe(true);
+      expect(result.current.isCueModalOpen).toBe(true); // still open
     });
   });
 });
