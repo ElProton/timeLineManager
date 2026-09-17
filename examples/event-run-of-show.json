@@ -1,0 +1,88 @@
+{
+  "schemaVersion": 2,
+  "metadata": {
+    "title": "Product launch — run of show",
+    "durationSeconds": 1800
+  },
+  "tracks": [
+    { "id": "55555555-5555-4555-8555-555555555555", "name": "Stage" },
+    { "id": "66666666-6666-4666-8666-666666666666", "name": "AV" },
+    { "id": "77777777-7777-4777-8777-777777777777", "name": "Catering" },
+    { "id": "88888888-8888-4888-8888-888888888888", "name": "Comms" }
+  ],
+  "cues": [
+    {
+      "id": "bbbbbbb1-0000-4000-8000-000000000001",
+      "description": "Doors open, walk-in music",
+      "timeStart": 0,
+      "timeEnd": 300,
+      "trackIds": [
+        "55555555-5555-4555-8555-555555555555",
+        "66666666-6666-4666-8666-666666666666"
+      ],
+      "color": "#84cc16"
+    },
+    {
+      "id": "bbbbbbb1-0000-4000-8000-000000000002",
+      "description": "Welcome drinks served",
+      "timeStart": 0,
+      "timeEnd": 300,
+      "trackIds": ["77777777-7777-4777-8777-777777777777"],
+      "color": "#f97316"
+    },
+    {
+      "id": "bbbbbbb1-0000-4000-8000-000000000003",
+      "description": "Opening keynote",
+      "timeStart": 300,
+      "timeEnd": 900,
+      "trackIds": ["55555555-5555-4555-8555-555555555555"],
+      "color": "#3b82f6"
+    },
+    {
+      "id": "bbbbbbb1-0000-4000-8000-000000000004",
+      "description": "Slides + live camera mix",
+      "timeStart": 300,
+      "timeEnd": 1500,
+      "trackIds": ["66666666-6666-4666-8666-666666666666"],
+      "color": "#06b6d4"
+    },
+    {
+      "id": "bbbbbbb1-0000-4000-8000-000000000005",
+      "description": "Demo, hands-on",
+      "timeStart": 900,
+      "timeEnd": 1320,
+      "trackIds": ["55555555-5555-4555-8555-555555555555"],
+      "color": "#a855f7"
+    },
+    {
+      "id": "bbbbbbb1-0000-4000-8000-000000000006",
+      "description": "Two-minute warning to stage",
+      "timeStart": 1290,
+      "timeEnd": 1320,
+      "trackIds": ["88888888-8888-4888-8888-888888888888"],
+      "color": "#ef4444"
+    },
+    {
+      "id": "bbbbbbb1-0000-4000-8000-000000000007",
+      "description": "Q&A",
+      "timeStart": 1320,
+      "timeEnd": 1500,
+      "trackIds": [
+        "55555555-5555-4555-8555-555555555555",
+        "88888888-8888-4888-8888-888888888888"
+      ],
+      "color": "#f59e0b"
+    },
+    {
+      "id": "bbbbbbb1-0000-4000-8000-000000000008",
+      "description": "Close, networking, buffet opens",
+      "timeStart": 1500,
+      "timeEnd": 1800,
+      "trackIds": [
+        "55555555-5555-4555-8555-555555555555",
+        "77777777-7777-4777-8777-777777777777"
+      ],
+      "color": "#22c55e"
+    }
+  ]
+}

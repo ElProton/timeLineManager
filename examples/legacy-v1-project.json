@@ -1,0 +1,41 @@
+{
+  "schemaVersion": 1,
+  "metadata": {
+    "title": "Legacy project (schema v1)",
+    "musicName": "Boléro",
+    "durationSeconds": 240
+  },
+  "actors": [
+    { "id": "99999999-9999-4999-8999-999999999991", "name": "Pierre" },
+    { "id": "99999999-9999-4999-8999-999999999992", "name": "Camille" }
+  ],
+  "actions": [
+    {
+      "id": "ccccccc1-0000-4000-8000-000000000001",
+      "description": "Enter stage left",
+      "timeStart": 0,
+      "timeEnd": 45,
+      "actorIds": ["99999999-9999-4999-8999-999999999991"],
+      "color": "#ef4444"
+    },
+    {
+      "id": "ccccccc1-0000-4000-8000-000000000002",
+      "description": "Cross together, upstage",
+      "timeStart": 45,
+      "timeEnd": 150,
+      "actorIds": [
+        "99999999-9999-4999-8999-999999999991",
+        "99999999-9999-4999-8999-999999999992"
+      ],
+      "color": "#3b82f6"
+    },
+    {
+      "id": "ccccccc1-0000-4000-8000-000000000003",
+      "description": "Final tableau, hold until blackout",
+      "timeStart": 150,
+      "timeEnd": 240,
+      "actorIds": ["99999999-9999-4999-8999-999999999992"],
+      "color": "#a855f7"
+    }
+  ]
+}

@@ -1,9 +1,15 @@
-﻿import { useRef, useCallback } from "react";
-import { ProjectData } from "../types";
+import { useRef, useCallback, useState } from "react";
+import type { ProjectData } from "../types";
 import * as htmlToImage from "html-to-image";
+import { sanitiseFilename } from "../utils/time";
 
 export function useExport(projectData: ProjectData | null) {
   const timelineRef = useRef<HTMLDivElement>(null);
+  const [exportError, setExportError] = useState<string | null>(null);
+
+  const baseFilename = projectData
+    ? sanitiseFilename(projectData.metadata.title)
+    : "timeline";
 
   const saveJson = useCallback(() => {
     if (!projectData) return;
@@ -12,7 +18,7 @@ export function useExport(projectData: ProjectData | null) {
     const url = URL.createObjectURL(blob);
     const link = document.createElement("a");
     link.href = url;
-    link.download = `${projectData.metadata.title.replace(/\s+/g, "_")}_timeline.json`;
+    link.download = `${sanitiseFilename(projectData.metadata.title)}_timeline.json`;
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
@@ -21,6 +27,7 @@ export function useExport(projectData: ProjectData | null) {
 
   const exportImage = useCallback(async () => {
     if (!timelineRef.current || !projectData) return;
+    setExportError(null);
     try {
       const node = timelineRef.current;
       const dataUrl = await htmlToImage.toJpeg(node, {
@@ -36,18 +43,21 @@ export function useExport(projectData: ProjectData | null) {
         },
       });
       const link = document.createElement("a");
-      link.download = `${projectData.metadata.title.replace(/\s+/g, "_")}_timeline.jpeg`;
+      link.download = `${sanitiseFilename(projectData.metadata.title)}_timeline.jpeg`;
       link.href = dataUrl;
       link.click();
     } catch (err) {
       console.error("Failed to export image", err);
-      alert("Failed to export image. Please try again.");
+      setExportError("Could not export the image. Please try again.");
     }
   }, [projectData]);
 
   return {
     timelineRef,
+    baseFilename,
     saveJson,
     exportImage,
+    exportError,
+    dismissExportError: useCallback(() => setExportError(null), []),
   };
 }

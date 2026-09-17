@@ -1,28 +1,86 @@
-﻿import { CURRENT_SCHEMA_VERSION } from "../types";
+import { CURRENT_SCHEMA_VERSION } from "../types";
+
+type Raw = Record<string, unknown>;
+
+function isRecord(value: unknown): value is Raw {
+  return value !== null && typeof value === "object" && !Array.isArray(value);
+}
 
 /**
- * Migrates raw parsed JSON from any previous schema version to the current version.
- * Returns the migrated data object, or null if the data is unrecoverable.
+ * v1 → v2: rename the show-production vocabulary to a generic one.
+ *
+ *   actors            → tracks
+ *   actions           → cues
+ *   action.actorIds   → cue.trackIds
+ *   metadata.musicName (required) → metadata.soundtrack (optional)
+ *
+ * Every object is rebuilt field by field rather than deep-cloned: this keeps
+ * the input untouched without relying on `structuredClone`, which jsdom does
+ * not provide. Unknown fields are carried over, so a file written by a newer
+ * minor revision does not lose data on the way through.
+ */
+function v1ToV2(record: Raw): Raw {
+  const { musicName, ...restMetadata } = isRecord(record.metadata)
+    ? record.metadata
+    : {};
+
+  const metadata: Raw = { ...restMetadata };
+  if (typeof musicName === "string" && musicName.trim() !== "") {
+    metadata.soundtrack = musicName;
+  }
+
+  const tracks = Array.isArray(record.actors)
+    ? record.actors.map((actor) => (isRecord(actor) ? { ...actor } : actor))
+    : [];
+
+  const cues = Array.isArray(record.actions)
+    ? record.actions.map((action) => {
+        if (!isRecord(action)) return action;
+        const { actorIds, ...restCue } = action;
+        return {
+          ...restCue,
+          trackIds: Array.isArray(actorIds) ? [...actorIds] : [],
+        };
+      })
+    : [];
+
+  const { actors: _actors, actions: _actions, ...rest } = record;
+
+  return { ...rest, schemaVersion: 2, metadata, tracks, cues };
+}
+
+/**
+ * Migrates raw parsed JSON from any previous schema version to the current one.
+ * Returns the migrated data, or null if the data is unrecoverable.
  *
  * Migration chain:
- *   v0 (pre-versioning) → v1 : adds schemaVersion field
- *   Future versions: add incremental steps here.
+ *   v0 (pre-versioning) → v1 : stamps schemaVersion
+ *   v1                  → v2 : generic vocabulary (see `v1ToV2`)
+ *
+ * The input is never mutated: each step returns a new object. Callers pass in
+ * freshly parsed JSON that they may also hold a reference to, and an earlier
+ * version of this function wrote `schemaVersion` straight onto that object.
+ *
+ * This only handles versioning, not structural validity — that is the job of
+ * `isValidProjectData` in `utils/validation.ts`.
  */
-export function migrateProject(data: unknown): Record<string, unknown> | null {
-  if (data === null || typeof data !== "object") return null;
+export function migrateProject(data: unknown): Raw | null {
+  if (!isRecord(data)) return null;
 
-  const record = data as Record<string, unknown>;
+  let record: Raw = { ...data };
   let version =
     typeof record.schemaVersion === "number" ? record.schemaVersion : 0;
 
-  // v0 → v1: Legacy data without schemaVersion — just stamp it.
+  // v0 → v1: legacy data without a version — just stamp it.
   if (version === 0) {
-    record.schemaVersion = 1;
+    record = { ...record, schemaVersion: 1 };
     version = 1;
   }
 
-  // Future migrations:
-  // if (version === 1) { /* transform v1 → v2 */ version = 2; }
+  if (version === 1) {
+    record = v1ToV2(record);
+    version = 2;
+  }
 
   if (version !== CURRENT_SCHEMA_VERSION) {
     console.warn(`Unsupported schema version: ${version}`);
