@@ -1,10 +1,16 @@
-@import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap");
 @import "tailwindcss";
 
-@theme {
-  --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
-}
-
-body {
-  font-family: "Inter", sans-serif;
-}
+/*
+ * No web font.
+ *
+ * The app made one network request, and it was this file fetching Inter from
+ * fonts.googleapis.com — which hands Google the IP address of everyone who
+ * opens the timeline, on every load, for a typeface. "No network calls to
+ * anything" is the one rule a pull request here cannot break, so it cannot be
+ * broken by a stylesheet either.
+ *
+ * Tailwind's default `font-sans` is the system stack: San Francisco, Segoe UI,
+ * Roboto — the interface font of whatever machine is reading. Self-hosting
+ * Inter would also have worked, at the cost of ~100 kB of vendored binaries
+ * and its licence to keep up with. Nothing here needed a specific typeface.
+ */
