@@ -14,10 +14,14 @@ function isRecord(value: unknown): value is Raw {
  *   action.actorIds   → cue.trackIds
  *   metadata.musicName (required) → metadata.soundtrack (optional)
  *
- * Every object is rebuilt field by field rather than deep-cloned: this keeps
- * the input untouched without relying on `structuredClone`, which jsdom does
- * not provide. Unknown fields are carried over, so a file written by a newer
- * minor revision does not lose data on the way through.
+ * Every object is rebuilt field by field rather than deep-cloned, so the input
+ * is left untouched. Unknown fields are carried over deliberately, so a file
+ * written by a newer minor revision does not lose data on the way through.
+ *
+ * The original reason for not deep-cloning was that jsdom had no
+ * `structuredClone`. The version this project tests against does, so that no
+ * longer applies — but a migration that states each version's shape explicitly
+ * is worth more than one that copies a blob, so this stays as it is.
  */
 function v1ToV2(record: Raw): Raw {
   const { musicName, ...restMetadata } = isRecord(record.metadata)

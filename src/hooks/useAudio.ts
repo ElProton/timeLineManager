@@ -5,16 +5,17 @@ import type { Peak } from "../utils/waveform";
 /**
  * How many columns the waveform is reduced to, once, at attach time.
  *
- * The decoded buffer is thrown away immediately afterwards — it weighs ~60 MB
- * for a six-minute track — so the peaks cannot be recomputed when the canvas
- * is resized. 2000 is more detail than the canvas usually has pixels; beyond
+ * The decoded buffer is thrown away immediately afterwards — 61 MB for six
+ * minutes of stereo — so the peaks cannot be recomputed when the canvas is
+ * resized. 2000 is more detail than the canvas usually has pixels; beyond
  * that the drawing stretches, which is what every waveform display does.
  */
 const WAVEFORM_BUCKETS = 2000;
 
 /**
  * `decodeAudioData` resamples to the context's rate, so asking for a low one
- * decodes faster and holds a fraction of the memory. A waveform column spans
+ * decodes faster and holds half the memory: six minutes of stereo is 121 MB of
+ * `Float32` samples at 44.1 kHz, and 61 MB here. A waveform column spans
  * thousands of samples either way.
  */
 const DECODE_SAMPLE_RATE = 22050;

@@ -76,6 +76,22 @@ Vitest is configured in the same file as Vite:
   `@testing-library/jest-dom` matchers and clears the DOM after each test
 - test files are `src/**/*.test.{ts,tsx}`
 
+**What jsdom does not provide**, because it has repeatedly decided the architecture
+here, as of jsdom 28: no `<dialog>` `showModal()`/`close()`, no Web Audio
+(`AudioContext` and `OfflineAudioContext` are both `undefined`), no 2D canvas
+context (`getContext("2d")` returns `null`), no `ResizeObserver`, no IndexedDB, and
+a media element that reports "Not implemented" for `play()`, `pause()` and
+`load()`. `requestAnimationFrame` and `structuredClone` **are** available — the
+latter was not always, and comments written before it landed said otherwise.
+
+Check before trusting any of that: it moves with the jsdom version. A throwaway
+test that logs `typeof` for each one settles it in a few seconds.
+
+The rule that follows: logic goes into `src/utils/` as pure functions, and the
+irreducible browser glue stays as thin as it can be. Where a fake is unavoidable it
+goes **in the test file** — see `useAudio.test.ts` — never in `setup.ts`, so the
+missing API stays missing for every other test.
+
 ## TypeScript configuration
 
 File: [../tsconfig.json](../tsconfig.json)
@@ -126,10 +142,12 @@ timeLineManager/
     ├── main.tsx                  # React root: createRoot + StrictMode + ErrorBoundary
     ├── App.tsx                   # Composition; holds no state
     ├── types.ts                  # Domain model, schema version, duration cap
-    ├── index.css                 # Tailwind import + Inter font
+    ├── index.css                 # Tailwind import; no theme, no web font
     ├── components/
     │   ├── ProjectInit.tsx       # Start screen: create, import, resume
-    │   ├── Timeline.tsx          # Time axis and track rows (forwardRef)
+    │   ├── Timeline.tsx          # Axis, waveform, rows, playhead (forwardRef)
+    │   ├── Waveform.tsx          # The peaks, on a canvas
+    │   ├── AudioBar.tsx          # Attach a soundtrack, transport, shortcuts
     │   ├── Modal.tsx             # Accessible dialog shell
     │   ├── CueModal.tsx          # Cue create/edit
     │   ├── TrackModal.tsx        # Track create/edit
@@ -141,11 +159,14 @@ timeLineManager/
     │   ├── useProjectManager.ts  # Project state and persistence
     │   ├── useModals.ts          # Dialog open/close and editing target
     │   ├── useExport.ts          # JSON and JPEG export
-    │   └── useConfirm.ts         # Promise-based confirmation
+    │   ├── useConfirm.ts         # Promise-based confirmation
+    │   ├── useAudio.ts           # Soundtrack: playback, peaks, real duration
+    │   └── useAnimationFrame.ts  # rAF loop: the playhead and the readout
     ├── utils/
     │   ├── cn.ts                 # clsx + tailwind-merge
     │   ├── time.ts               # mm:ss parsing, formatting, filename sanitising
-    │   ├── timeline.ts           # Bounded time-axis scale
+    │   ├── timeline.ts           # Bounded axis scale, time <-> position
+    │   ├── waveform.ts           # Peak extraction from decoded samples
     │   ├── storage.ts            # localStorage cache
     │   ├── migration.ts          # Schema migration chain
     │   └── validation.ts         # The single gate for untrusted data
@@ -159,6 +180,9 @@ timeLineManager/
 
 - **Framework:** Tailwind CSS 4 through the Vite plugin, so there is no
   `tailwind.config.js`
-- **Theme:** configured with `@theme` in [../src/index.css](../src/index.css)
-- **Font:** Inter, loaded from Google Fonts
-- **Palette:** `neutral` for surfaces, `indigo` for accents
+- **Theme:** Tailwind's defaults. [../src/index.css](../src/index.css) is one
+  `@import` and a comment
+- **Font:** the system stack — Tailwind's default `font-sans`. **No web font**: the
+  app used to fetch Inter from Google Fonts on every load, which was the one network
+  call it made and the one rule it is not allowed to break
+- **Palette:** `neutral` for surfaces, `indigo` for accents, `red` for the playhead

@@ -6,7 +6,7 @@
 > Toute session qui reprend le projet doit lire ce fichier en premier et mettre à
 > jour la colonne **Statut** des lots.
 
-- **Dernière mise à jour :** 2026-09-17
+- **Dernière mise à jour :** 2026-09-17 (lot 4)
 - **Dépôt :** https://github.com/ElProton/timeLineManager
 - **Branche de travail courante :** `claude/serene-galileo-x8rf85`
 
@@ -17,12 +17,14 @@
 Ces arbitrages sont validés par le propriétaire du projet. Ne pas les rouvrir sans
 demande explicite de sa part.
 
-| #   | Sujet                 | Décision                                                               | Conséquence                                                                                                                                          |
-| --- | --------------------- | ---------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------- |
-| D1  | Licence               | **MIT**                                                                | Adoption et réutilisation maximales, zéro friction. Cohérent avec l'ensemble des dépendances (MIT/ISC).                                              |
-| D2  | Vocabulaire du modèle | **`Actor` → `Track`, `Action` → `Cue`**, `musicName` devient optionnel | Schéma **v2** + migration automatique v1 → v2. Les fichiers JSON existants continuent de s'ouvrir.                                                   |
-| D3  | Gouvernance           | **Faible entretien assumé**                                            | `MAINTENANCE.md` annonce le niveau de service. Automatisation maximale (CI, Dependabot, stale bot). Règle écrite d'accès au statut de co-mainteneur. |
-| D4  | Ordre d'exécution     | Plan en fichier, puis **lot 0 + lot 1**                                | Les lots 2 à 4 sont planifiés mais non engagés.                                                                                                      |
+| #   | Sujet                  | Décision                                                               | Conséquence                                                                                                                                                                    |
+| --- | ---------------------- | ---------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| D1  | Licence                | **MIT**                                                                | Adoption et réutilisation maximales, zéro friction. Cohérent avec l'ensemble des dépendances (MIT/ISC).                                                                        |
+| D2  | Vocabulaire du modèle  | **`Actor` → `Track`, `Action` → `Cue`**, `musicName` devient optionnel | Schéma **v2** + migration automatique v1 → v2. Les fichiers JSON existants continuent de s'ouvrir.                                                                             |
+| D3  | Gouvernance            | **Faible entretien assumé**                                            | `MAINTENANCE.md` annonce le niveau de service. Automatisation maximale (CI, Dependabot, stale bot). Règle écrite d'accès au statut de co-mainteneur.                           |
+| D4  | Ordre d'exécution      | Plan en fichier, puis **lot 0 + lot 1**                                | Les lots 2 à 4 ont suivi. Tous livrés.                                                                                                                                         |
+| D7  | Persistance de l'audio | **Ré-attaché à chaque session**                                        | Le fichier n'entre ni dans `localStorage` (~5 Mo contre 3–50 Mo) ni dans le JSON exporté. `metadata.soundtrack` porte le nom ; l'app le redemande. IndexedDB reste au ROADMAP. |
+| D8  | Périmètre du lot 4     | **Cœur audio + forme d'onde**                                          | Attacher, lire, tête de lecture, clic pour se positionner, durée déduite, forme d'onde. BPM et marqueurs de section restent au ROADMAP, gradués.                               |
 
 ### Contrainte structurante
 
@@ -276,7 +278,7 @@ installer et valider son travail sans poser de question.
 
 **Critère de sortie :** un contributeur inconnu ouvre une PR, la CI la valide seule, et il sait sans demander sous quel délai elle sera regardée.
 
-### Lot 2 — Dé-spécialisation (planifié, non engagé)
+### Lot 2 — Dé-spécialisation (livré)
 
 1. Schéma **v2** : `Actor` → `Track`, `Action` → `Cue`, `musicName` optionnel,
    renommé en `soundtrack`. Migration v1 → v2 dans `migration.ts`, couverte par des
@@ -290,16 +292,47 @@ installer et valider son travail sans poser de question.
 7. Fermeture de la PR #1 et réimplémentation des calques sur l'architecture actuelle.
 8. Jeux de données d'exemple dans `examples/`, non théâtraux.
 
-### Lot 3 — Documentation (planifié)
+### Lot 3 — Documentation (livré)
 
 Réécriture de `docs/` depuis le code réel, avec une règle de tenue : la documentation
 d'architecture est vérifiée à chaque PR qui touche `src/hooks/` ou `src/types.ts`
 (point ajouté à la checklist du template de PR).
 
-### Lot 4 — Fonctionnalités d'adoption (backlog public)
+### Lot 4 — Rendre la timeline réellement musicale (livré)
+
+Le README promettait « une timeline synchronisée sur une bande son » et l'application
+ne savait rien du son : une grille `mm:ss`, et rien d'autre. Placer un top sur un
+refrain supposait de connaître le morceau par cœur — ce que le propriétaire sait
+faire, et personne d'autre.
+
+1. `timeToPercent` / `percentToTime` dans `utils/timeline.ts` : la conversion était
+   recopiée à quatre endroits et l'inverse, qu'exige le clic pour se positionner,
+   n'existait pas.
+2. `LaneOverlay` : un seul repère de coordonnées. La bande de survol multi-pistes se
+   positionnait contre la pleine largeur alors que les cues qu'elle encadre vivent
+   dans une piste décalée de 192 px — mesurée au navigateur, elle était **144 px trop
+   à gauche et 48 px trop large** depuis toujours, cachée par `opacity-30`.
+3. `utils/waveform.ts` : `computePeaks`, trente lignes d'arithmétique pure. Aucune
+   dépendance ajoutée — une bibliothèque de forme d'onde aurait été la septième et
+   aurait doublé le bundle.
+4. `useAudio` : `<audio>` pour la lecture, `OfflineAudioContext` pour le seul
+   décodage des échantillons. L'audio **n'entre jamais dans `ProjectData`**.
+5. `AudioBar` et `Waveform` : transport, raccourcis clavier (espace, flèches), forme
+   d'onde sur canvas, adoption de la durée réelle via le chemin de troncature
+   existant, donc annulable.
+
+**Hors lot, découvert en vérifiant :** l'application faisait un appel réseau —
+`index.css` chargeait Inter depuis Google Fonts à chaque ouverture, ce qui livrait
+l'adresse IP de chaque lecteur. C'est précisément la règle que `CONTRIBUTING.md`
+déclare non négociable. Corrigé : pile de polices système, zéro requête sortante,
+vérifié au navigateur sur une session complète.
+
+### Suite — backlog public
 
 Section 3.2, priorisée dans `ROADMAP.md`. Aucun engagement de délai. Les sujets sont
 découpés pour être pris par un contributeur extérieur sans arbitrage du propriétaire.
+Le BPM (🔵) et les marqueurs de section (🟢) sont les deux suites directes du lot 4,
+avec leurs pièges consignés dans le ROADMAP.
 
 ---
 
@@ -310,12 +343,14 @@ découpés pour être pris par un contributeur extérieur sans arbitrage du prop
 | 2026-09-17 | Analyse initiale | État des lieux vérifié (tests, build, typage, bugs), décisions D1-D4 actées, ce plan.                                                                                                                                                                                                                                                                                                                                                                                                                                                                  |
 | 2026-09-17 | Lot 0            | Décontamination AI Studio, BOM purgés, `@types/react` + `strict` (38 erreurs corrigées, dont `ringColor`), ESLint + Prettier + EditorConfig, `npm run verify`.                                                                                                                                                                                                                                                                                                                                                                                         |
 | 2026-09-17 | Lot 1            | LICENSE MIT, CI (Node 20/22), déploiement GitHub Pages, CONTRIBUTING / CODE_OF_CONDUCT / SECURITY / MAINTENANCE / ROADMAP, templates issues et PR, Dependabot, ADR-001 récupéré de la PR #1, agents déplacés vers `docs/contrib/ai-agents/`.                                                                                                                                                                                                                                                                                                           |
+| 2026-09-17 | Lot 2            | Schéma v2 (`Track`/`Cue`, `soundtrack` optionnel) et migration v0→v1→v2 non mutante. `isValidProjectData` devient le point de passage unique, import fichier compris. Modale accessible écrite à la main (jsdom n'implémente ni `showModal()` ni `close()`), `confirm()`/`alert()` natifs remplacés. Bugs B1–B12 corrigés.                                                                                                                                                                                                                             |
 | 2026-09-17 | Lot 3            | Documentation remise en phase avec le code. `architecture.md` et `components.md` réécrits depuis les sources ; `utilities.md` réparé — deux modifications du lot 2 n'y étaient jamais arrivées (un `str.replace` non asserté) et le fichier se contredisait ; `dev_setup.md` corrigé (arborescence) ; `ROADMAP.md` corrigé (accessibilité et i18n périmées) et complété (performance de rendu). **Toute la doc passe en anglais.** `optimisation.md` supprimé au profit du ROADMAP. Vérificateur de liens `scripts/check-links.mjs` branché sur la CI. |
+| 2026-09-17 | Lot 4            | L'audio. `timeToPercent`/`percentToTime` et `LaneOverlay` (la bande de survol était 144 px hors de son repère depuis toujours), `computePeaks` sans dépendance, `useAudio`, `AudioBar`, `Waveform`, tête de lecture hors rendu React, clic pour se positionner, adoption de la durée via le chemin de troncature existant. **Et un appel réseau supprimé** : `index.css` chargeait Inter depuis Google Fonts. Bundle 86,8 → 89,9 ko gzip.                                                                                                              |
 
 ## 6. À faire à la main, hors dépôt
 
-Ces actions ne peuvent pas être réalisées depuis le code et restent à la charge du
-propriétaire du dépôt. Elles sont toutes dans les réglages GitHub.
+Ces actions ne peuvent pas être réalisées depuis le code. **Elles sont toutes
+faites** — conservées ici pour qui reprendrait le dépôt ou en monterait un semblable.
 
 | Action                                                                 | Où                            | Pourquoi                                                                                                   |
 | ---------------------------------------------------------------------- | ----------------------------- | ---------------------------------------------------------------------------------------------------------- |
@@ -324,5 +359,5 @@ propriétaire du dépôt. Elles sont toutes dans les réglages GitHub.
 | **Activer le signalement privé de vulnérabilités**                     | Settings → Security           | `SECURITY.md` pointe vers ce formulaire.                                                                   |
 | **Créer les labels** `good first issue`, `help wanted`, `needs triage` | Issues → Labels               | Référencés par le ROADMAP, CONTRIBUTING et les templates.                                                  |
 | **Mettre à jour la description et les sujets du dépôt**                | Page d'accueil du dépôt       | La description est encore « manage timeline to schedule show ».                                            |
-| **Fermer la PR #1** en renvoyant vers `docs/adr/001-layer-system.md`   | PR #1                         | L'ADR est conservé ; le code est périmé. À faire après fusion du lot 1.                                    |
+| **Fermer la PR #1** en renvoyant vers `docs/adr/001-layer-system.md`   | PR #1                         | L'ADR est conservé ; le code est périmé. Fermée le 2026-09-17.                                             |
 | _(optionnel)_ Protéger `main` : CI verte obligatoire                   | Settings → Branches           | Évite qu'une fusion casse `main` sans que personne ne s'en aperçoive.                                      |

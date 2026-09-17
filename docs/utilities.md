@@ -30,7 +30,7 @@ className={cn(
 
 **File:** [src/utils/time.ts](../src/utils/time.ts)
 
-All of these work on `mm:ss` ↔ whole seconds.
+All of these work on `mm:ss` ↔ whole seconds, except `formatTimePrecise`.
 
 ### `formatTime`
 
@@ -92,6 +92,24 @@ True when the string matches `/^\d{2,}:[0-5]\d$/`.
 > `"00:99"`: the entry silently became 99 seconds and was redisplayed as
 > `"01:39"`. No test covered a value above `:59`, so the bug was invisible.
 
+### `formatTimePrecise`
+
+```typescript
+formatTimePrecise(seconds: number): string
+```
+
+`mm:ss.t`, for the transport readout. `formatTime` floors to whole seconds, which is
+right for the fields a reader types but leaves a moving playhead looking stuck for six
+frames at a time. Kept separate so the input format cannot drift behind it. Truncates
+rather than rounds, like `formatTime`, and never shows a negative position.
+
+| Input   | Output      |
+| ------- | ----------- |
+| `0`     | `"00:00.0"` |
+| `12.4`  | `"00:12.4"` |
+| `59.99` | `"00:59.9"` |
+| `-5`    | `"00:00.0"` |
+
 ### `sanitiseFilename`
 
 ```typescript
@@ -117,13 +135,15 @@ characters. Accented characters are kept. An empty result falls back to
 
 ---
 
-## `timeline` — the time axis scale
+## `timeline` — the time axis, and time ↔ position
 
 **File:** [src/utils/timeline.ts](../src/utils/timeline.ts)
 
 ```typescript
 markerStep(durationSeconds: number): number
 markerTimes(durationSeconds: number): number[]
+timeToPercent(seconds: number, durationSeconds: number): number
+percentToTime(percent: number, durationSeconds: number): number
 ```
 
 Picks the interval between axis labels from a fixed scale of round values — 1, 2,
@@ -142,6 +162,61 @@ keeps the axis at 40 labels or fewer. Past that scale it falls back to
 > **10,000 markers per track row** for a mistyped duration such as `9999:00`,
 > which froze the tab. It also left a three-minute timeline with only seven
 > labels.
+
+### `timeToPercent` and `percentToTime`
+
+Every position on screen is a percentage of the total duration — axis markers, grid
+lines, cue blocks, the playhead. Applied to the difference of two times,
+`timeToPercent` gives a width instead of an offset; the arithmetic is the same.
+`percentToTime` is the inverse, and is what a click on the time axis uses.
+
+`percentToTime(timeToPercent(t, d), d) === t`, within floating-point tolerance.
+
+**Only one of them clamps, deliberately.**
+
+| Function        | Clamps?     | Why                                                                                                                                                                     |
+| --------------- | ----------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `timeToPercent` | No          | `timeEnd <= durationSeconds` is enforced by `CueModal`, not by `isValidProjectData`, so an imported cue can run past the end — and it should visibly overflow its lane. |
+| `percentToTime` | To `[0, d]` | A pointer can leave the element it was measured against, and seeking to a negative time is not a thing.                                                                 |
+
+Both return `0` for a duration of zero or less, rather than `Infinity` or `NaN`.
+
+The playhead does its own clamping, because a playhead past the end means the file is
+longer than the timeline and belongs at the end — not overflowing it.
+
+> **History.** This conversion was copied to four places in `Timeline.tsx` and its
+> inverse did not exist, which is exactly what clicking the timeline needed.
+
+---
+
+## `waveform` — peak extraction
+
+**File:** [src/utils/waveform.ts](../src/utils/waveform.ts)
+
+```typescript
+interface Peak { min: number; max: number }
+computePeaks(channels: Float32Array[], buckets: number): Peak[]
+```
+
+Reduces a decoded signal to one min/max pair per column of the waveform drawing. This
+is the whole of the waveform maths: a waveform library would have been the seventh
+runtime dependency and roughly doubled the bundle, against thirty lines of arithmetic
+that run once, when a file is attached.
+
+Measured on six minutes of 44.1 kHz stereo — 15.9 million samples — it takes **93 ms**
+for 2000 columns. The decode it follows costs considerably more.
+
+It takes the **channels**, not a single `Float32Array`, so a hard-panned track is not
+drawn as silence. Mixing down first would allocate a second copy of a buffer that
+already weighs 61 MB for six minutes of stereo at the 22.05 kHz `useAudio` decodes
+to; taking the extent across channels in the same pass costs nothing.
+
+Every bucket gets at least one sample, so asking for more columns than there are
+samples stretches the drawing instead of leaving gaps in it. An empty signal, or a
+request for no columns, returns `[]`.
+
+Being pure, it is where the logic can be tested at all: jsdom provides no Web Audio,
+so nothing downstream of the decode can be.
 
 ---
 
@@ -171,8 +246,9 @@ Applies the chain `v0 → v1 → v2`. Returns `null` when the data is unusable o
 carries an unknown version.
 
 **It never mutates its input.** Each step rebuilds the objects field by field
-rather than deep-cloning — `structuredClone` is unavailable in jsdom, so the
-tests could not rely on it.
+rather than deep-cloning, which also makes each version's shape explicit in the
+code. Unknown fields are carried over on purpose, so a file from a newer minor
+revision does not lose data passing through.
 
 ---
 

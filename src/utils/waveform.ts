@@ -14,8 +14,8 @@ export interface Peak {
  *
  * It takes the channels rather than a single `Float32Array` so a stereo file is
  * drawn from both. Mixing down first would allocate a second copy of a buffer
- * that already weighs ~60 MB for a six-minute track; taking the extent across
- * channels in the same pass costs nothing.
+ * that already weighs 61 MB for six minutes of stereo at the rate `useAudio`
+ * decodes to; taking the extent across channels in the same pass costs nothing.
  */
 export function computePeaks(
   channels: Float32Array[],

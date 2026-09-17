@@ -20,7 +20,8 @@ main.tsx
             ├── header       title, soundtrack, duration, undo/redo, exports
             ├── banners      storage blocked · export failed
             ├── toolbar      add track · add cue · filter by track
-            ├── Timeline     the time axis and the track rows
+            ├── AudioBar     attach a soundtrack · transport · length mismatch
+            ├── Timeline     the time axis, the waveform, the rows, the playhead
             └── dialogs      CueModal · TrackModal · MetadataModal · ConfirmDialog
 ```
 
@@ -42,7 +43,7 @@ are tested directly, without rendering anything.
 
 ## State
 
-`App` holds **no** state. It calls four hooks and wires their return values into
+`App` holds **no** state. It calls five hooks and wires their return values into
 the tree.
 
 ### `useProjectManager` — the project itself
@@ -69,7 +70,7 @@ look at, not what you have.
 The hook also owns persistence, described below, and exposes `maxCueEnd`, which
 `MetadataModal` uses to warn before a shorter duration would truncate cues.
 
-### `useModals`, `useExport`, `useConfirm`
+### `useModals`, `useExport`, `useConfirm`, `useAudio`
 
 - **`useModals`** — which dialog is open, and which entity it is editing.
   `null` means "create", an object means "edit".
@@ -78,6 +79,11 @@ The hook also owns persistence, described below, and exposes `maxCueEnd`, which
   rather than thrown or `alert()`ed.
 - **`useConfirm`** — a promise-based `confirm(options)` so call sites read top to
   bottom: `if (!(await confirm({...}))) return;`
+- **`useAudio`** — the attached soundtrack: the file, the element that plays it, its
+  waveform and its real duration. Described in [its own section](#the-soundtrack).
+
+`useAnimationFrame` is a sixth hook, but not one `App` calls: `AudioBar` and
+`Timeline` use it directly to update the transport readout and the playhead.
 
 **Confirmation deliberately lives in `App`, not in `useProjectManager`.** An
 in-app dialog is asynchronous. Keeping the decision inside the state hook would
@@ -107,6 +113,43 @@ On mount the hook probes storage with a write/read/delete cycle:
 Every storage operation is wrapped: a failure warns to the console and is
 otherwise ignored. A storage problem must never block someone mid-edit.
 
+## The soundtrack
+
+Attaching an audio file is what turns an `mm:ss` grid into a timeline you can place
+cues on by ear. Three decisions shape how it works.
+
+**The file is not project data, and never enters `ProjectData`.** A project is a JSON
+file people mail each other; a 40 MB recording is not. Nothing in the code would stop
+it: `isValidProjectData` does not reject unknown keys, and `migrateProject`
+deliberately preserves them — so anything smuggled in would be serialised into every
+exported file and held by up to fifty undo snapshots. The guard is discipline. Audio
+state lives entirely in `useAudio`; the only thing the project carries is
+`metadata.soundtrack`, the file's **name**, which was already free text. On the next
+session the app asks for that file back by name.
+
+**Playback is an `HTMLAudioElement`; Web Audio is used only for the waveform.** The
+element gives play, pause and seek for free, and its `currentTime` is accurate to a
+few milliseconds — far finer than anyone can place a cue by eye. An
+`AudioBufferSourceNode` would be sample-accurate but would need its own clock and
+cannot be paused. Web Audio does the one thing the element cannot: hand over the
+samples. `decodeAudioData` runs **once**, on an `OfflineAudioContext` that never
+opens an output device, and the decoded buffer is dropped as soon as
+the peaks are out of it. Six minutes of stereo is 121 MB of `Float32` samples at
+44.1 kHz, which is why the context asks for 22.05 kHz: `decodeAudioData` resamples to
+whatever rate it is given, and 61 MB is the better half of that bargain. A waveform
+column spans thousands of samples either way.
+
+**The playhead does not go through React.** It is a percentage `translateX` written
+straight onto `style.transform` inside a `requestAnimationFrame` loop. Hovering a
+single cue already re-renders every row and every block — an open
+[roadmap](../ROADMAP.md) item — and doing that sixty times a second would turn a
+known cost into an unusable one.
+
+The waveform itself is thirty lines of arithmetic in
+[`utils/waveform.ts`](../src/utils/waveform.ts) rather than a library: a waveform
+package would have been a seventh runtime dependency and roughly doubled the bundle.
+The whole feature added about 3 kB gzipped.
+
 ## Untrusted data has exactly one way in
 
 Two sources are untrusted: the browser cache and an imported JSON file. Both go
@@ -135,12 +178,25 @@ A negative duration got through. Full rules are in
 `Timeline` is a `forwardRef` component so `useExport` can capture its DOM node as
 an image.
 
-Positions are percentages of the total duration:
+Positions are percentages of the total duration, through `timeToPercent` and its
+inverse `percentToTime` in [`utils/timeline.ts`](../src/utils/timeline.ts):
 
 ```
-left  = (cue.timeStart / durationSeconds) * 100%
-width = ((cue.timeEnd - cue.timeStart) / durationSeconds) * 100%
+left  = timeToPercent(cue.timeStart, durationSeconds)
+width = timeToPercent(cue.timeEnd - cue.timeStart, durationSeconds)
 ```
+
+`percentToTime` is what a click on the time axis uses to decide where to move the
+playhead.
+
+**There is one coordinate frame, and it is not the full width.** Cues sit inside a
+lane that starts after the 192 px label gutter, so anything spanning the rows —
+the multi-track hover band, the playhead — has to be positioned in that same lane or
+it is offset by exactly that gutter. The band was, for as long as it existed: measured
+in a browser it sat 144 px left of its own cue and was 48 px too wide, invisible
+behind `opacity-30` and dashed borders. Both now hang off `LaneOverlay`, which
+repeats the `w-48 shrink-0` + `flex-1` pair every row is built from, so the frame
+cannot drift unless the rows drift with it.
 
 The time axis picks its interval from a fixed scale of round values — 1, 2, 5,
 10, 15, 30, 60, 120, 300, 600, 900, 1800, 3600 seconds — choosing the first that
@@ -195,7 +251,9 @@ request — see [CONTRIBUTING.md](../CONTRIBUTING.md).
 - **No router.** One screen, two states.
 - **No state management library.** A reducer and four hooks carry it.
 - **No backend, no accounts, no telemetry, no network calls.** This is what keeps
-  the project free to run and possible to maintain with nobody on call.
+  the project free to run and possible to maintain with nobody on call. It holds
+  literally: there is no web font either, because fetching one hands a third party
+  the IP address of every reader. The interface uses the system font stack.
 
 ## Conventions
 

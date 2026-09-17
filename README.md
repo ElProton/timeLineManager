@@ -13,17 +13,22 @@ of a track.
 lives in your own browser storage and in the JSON file you export.
 
 > **Status.** This project started as an internal tool for live show production and is
-> being opened up for general use. It works and is covered by tests, but parts of the
-> vocabulary and several features are still shaped by that original context — see
-> [ROADMAP.md](ROADMAP.md). Contributions are welcome; read
-> [MAINTENANCE.md](docs/MAINTENANCE.md) first to know what level of support to expect.
+> being opened up for general use. The theatre vocabulary has gone and it now plays
+> the soundtrack it times against, but several features are still missing for anyone
+> who is not its author — see [ROADMAP.md](ROADMAP.md). Contributions are welcome;
+> read [MAINTENANCE.md](docs/MAINTENANCE.md) first to know what level of support to
+> expect.
 
 **[Try it →](https://elproton.github.io/timeLineManager/)** — nothing to install.
 Import one of the [example projects](examples/) to see a filled-in timeline.
 
 ## Features
 
-- Time axis derived from a soundtrack duration, with automatic `mm:ss` markers
+- **Attach an audio file and hear it**: play/pause, a playhead that follows the
+  sound, the waveform drawn behind the tracks, and a click on the time axis to jump
+  to a moment. Space plays and pauses, the arrow keys seek
+- Time axis with automatic `mm:ss` markers, and the option to take the timeline's
+  length from the audio file itself
 - One **track** per row — a person, a team, a device, a channel
 - One coloured **cue** per timed block; a cue can span several tracks and is
   highlighted across all of them on hover
@@ -46,21 +51,22 @@ The app is then served on <http://localhost:3000>.
 
 ## Scripts
 
-| Script                 | What it does                                     |
-| ---------------------- | ------------------------------------------------ |
-| `npm run dev`          | Development server with hot reload, on port 3000 |
-| `npm run build`        | Production build into `dist/`                    |
-| `npm run preview`      | Serve the production build locally               |
-| `npm run typecheck`    | TypeScript type checking, no emit                |
-| `npm run lint`         | ESLint over `src/`                               |
-| `npm run format`       | Rewrite files with Prettier                      |
-| `npm run format:check` | Fail if anything is not Prettier-formatted       |
-| `npm test`             | Run the test suite once                          |
-| `npm run test:watch`   | Run the test suite in watch mode                 |
-| `npm run clean`        | Remove `dist/`                                   |
+| Script                 | What it does                                      |
+| ---------------------- | ------------------------------------------------- |
+| `npm run dev`          | Development server with hot reload, on port 3000  |
+| `npm run build`        | Production build into `dist/`                     |
+| `npm run preview`      | Serve the production build locally                |
+| `npm run typecheck`    | TypeScript type checking, no emit                 |
+| `npm run lint`         | ESLint over `src/`                                |
+| `npm run format`       | Rewrite files with Prettier                       |
+| `npm run format:check` | Fail if anything is not Prettier-formatted        |
+| `npm run check:links`  | Fail on a dead relative link in any Markdown file |
+| `npm test`             | Run the test suite once                           |
+| `npm run test:watch`   | Run the test suite in watch mode                  |
+| `npm run clean`        | Remove `dist/`                                    |
 
-`npm run verify` runs typecheck, lint, format check, tests and build in one go — the
-same sequence as CI.
+`npm run verify` runs typecheck, lint, format check, the link check, tests and build
+in one go — the same sequence as CI.
 
 ## How your data is stored
 
@@ -71,6 +77,11 @@ copy you can archive, share or re-import later; **Reset** clears the stored proj
 Exported files carry a `schemaVersion`, and older files are migrated automatically
 when imported — including projects saved before the tracks-and-cues rename. See
 [the data model](docs/data_model.md).
+
+**The audio file is not part of the project.** It is read from your disk, played, and
+never uploaded, stored or exported — a project is a JSON file you can mail someone,
+and a 40 MB recording is not. What the project keeps is the file's _name_, so the app
+can ask you for it again next time you open the timeline.
 
 ## Tech stack
 
