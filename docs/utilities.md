@@ -140,8 +140,8 @@ characters. Accented characters are kept. An empty result falls back to
 **File:** [src/utils/timeline.ts](../src/utils/timeline.ts)
 
 ```typescript
-markerStep(durationSeconds: number): number
-markerTimes(durationSeconds: number): number[]
+markerStep(durationSeconds: number, laneWidthPx?: number): number
+markerTimes(durationSeconds: number, laneWidthPx?: number): number[]
 timeToPercent(seconds: number, durationSeconds: number): number
 percentToTime(percent: number, durationSeconds: number): number
 ```
@@ -158,10 +158,23 @@ keeps the axis at 40 labels or fewer. Past that scale it falls back to
 | 1 hour    | 2 min               | 31      |
 | `9999:00` | 14 999 s (~250 min) | 40      |
 
+Given a **lane width** it also accounts for the room a label needs, which is
+what makes zooming worth anything: four times the width earns more labels rather
+than the same ones spread further apart. Without it the interval comes from the
+duration alone, exactly as before.
+
+| Duration and lane | Step | Labels | Apart               |
+| ----------------- | ---- | ------ | ------------------- |
+| 40 s, no width    | 1 s  | 41     | — (they overlapped) |
+| 40 s in 1059 px   | 5 s  | 9      | 133 px              |
+| 40 s in 4959 px   | 1 s  | 41     | 106 px              |
+
 > **History.** The earlier rule — 30 s below ten minutes, 60 s above — generated
 > **10,000 markers per track row** for a mistyped duration such as `9999:00`,
 > which froze the tab. It also left a three-minute timeline with only seven
-> labels.
+> labels. Bounding the _count_ fixed the freeze and said nothing about whether
+> the labels fit: a 40-second timeline drew 41 of them 26 px apart, and they
+> ran into each other until the width was taken into account.
 
 ### `timeToPercent` and `percentToTime`
 
@@ -217,6 +230,38 @@ request for no columns, returns `[]`.
 
 Being pure, it is where the logic can be tested at all: jsdom provides no Web Audio,
 so nothing downstream of the decode can be.
+
+---
+
+## `dragCue` — retiming a cue
+
+**File:** [src/utils/dragCue.ts](../src/utils/dragCue.ts)
+
+```typescript
+type DragMode = "move" | "resize-start" | "resize-end";
+dragCue(cue, mode, deltaSeconds, bounds): { timeStart, timeEnd }
+```
+
+Where a cue lands after being dragged. The whole of the drag logic, and the only
+part of it that can be tested at all: jsdom reports every element as zero-sized
+and has no `setPointerCapture`, so no pixel-to-time conversion is reachable
+there. The component measures, this decides. The keyboard calls the same
+function — a nudge is a drag with no snap targets.
+
+**Results are whole seconds.** Not a preference: `isValidTimeFormat` accepts
+only `mm:ss` and `formatTime` truncates, so a cue left at 12.37 s would reopen
+in the editor reading `00:12` and move on save without anyone touching it.
+
+| Rule                                              | Why                                                                               |
+| ------------------------------------------------- | --------------------------------------------------------------------------------- |
+| `move` preserves the cue's length                 | A cue pushed against either end stops there instead of being squashed against it. |
+| `resize-*` keeps at least `MIN_CUE_SECONDS` (1 s) | `timeEnd > timeStart` is required, and `mm:ss` cannot write less.                 |
+| `timeEnd <= durationSeconds`                      | Enforced **here**, because `isValidProjectData` never did — only `CueModal`.      |
+| A zero delta returns the cue unchanged            | How a drag that went nowhere avoids costing an undo entry.                        |
+
+`bounds.snapTargets` is a plain list of times, so the function knows nothing
+about audio while still being what a playhead snaps to. Snapped values are
+rounded like any other, so a playhead at 12.6 s pulls an edge to 13.
 
 ---
 

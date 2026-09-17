@@ -82,8 +82,22 @@ The hook also owns persistence, described below, and exposes `maxCueEnd`, which
 - **`useAudio`** — the attached soundtrack: the file, the element that plays it, its
   waveform and its real duration. Described in [its own section](#the-soundtrack).
 
-`useAnimationFrame` is a sixth hook, but not one `App` calls: `AudioBar` and
-`Timeline` use it directly to update the transport readout and the playhead.
+Two more hooks exist that `App` does not call. `Timeline` and `AudioBar` use
+`useAnimationFrame` directly, to move the playhead and the transport readout;
+`Timeline` uses `useCueDrag` to run a drag on a cue.
+
+### One gesture is one undo entry
+
+`projectReducer` pushes a snapshot onto `past` for every mutating event, capped
+at fifty. A pointer drag fires `pointermove` around sixty times a second, so
+dispatching `SAVE_CUE` per move would erase the entire undo history in a single
+gesture — the history would hold nothing but one drag.
+
+So `useCueDrag` keeps the whole gesture to itself, writing the preview straight
+onto the DOM, and dispatches **once**, on release; not at all when the cue has
+not actually moved. **Anything continuous added later — resizing a track,
+dragging the playhead — has to do the same.** It is the one rule about this
+reducer that is not obvious from reading it.
 
 **Confirmation deliberately lives in `App`, not in `useProjectManager`.** An
 in-app dialog is asynchronous. Keeping the decision inside the state hook would
@@ -203,6 +217,11 @@ The time axis picks its interval from a fixed scale of round values — 1, 2, 5,
 keeps the axis under 40 labels. A fixed 30s/60s rule used to put ten thousand
 markers on the page for a mistyped duration, and left a three-minute timeline
 with seven. See [`utils/timeline.ts`](../src/utils/timeline.ts).
+
+`zoom` is one width on the content node; because every position inside is a
+percentage of its lane, cues, markers, the waveform and the playhead all follow
+without any arithmetic changing. It is view state and lives in `App` — it must
+no more reach `ProjectData` than the audio does.
 
 A cue that runs on several tracks appears on each of their rows. Hovering or
 focusing one draws a dashed band across the full height, so the reader can see

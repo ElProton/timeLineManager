@@ -79,9 +79,10 @@ Vitest is configured in the same file as Vite:
 **What jsdom does not provide**, because it has repeatedly decided the architecture
 here, as of jsdom 28: no `<dialog>` `showModal()`/`close()`, no Web Audio
 (`AudioContext` and `OfflineAudioContext` are both `undefined`), no 2D canvas
-context (`getContext("2d")` returns `null`), no `ResizeObserver`, no IndexedDB, and
-a media element that reports "Not implemented" for `play()`, `pause()` and
-`load()`. `requestAnimationFrame` and `structuredClone` **are** available — the
+context (`getContext("2d")` returns `null`), no `ResizeObserver`, no IndexedDB, no
+`setPointerCapture`, **every element reporting a size of zero** from
+`getBoundingClientRect()` and `clientWidth`, and a media element that reports
+"Not implemented" for `play()`, `pause()` and `load()`. `requestAnimationFrame` and `structuredClone` **are** available — the
 latter was not always, and comments written before it landed said otherwise.
 
 Check before trusting any of that: it moves with the jsdom version. A throwaway
@@ -161,11 +162,13 @@ timeLineManager/
     │   ├── useExport.ts          # JSON and JPEG export
     │   ├── useConfirm.ts         # Promise-based confirmation
     │   ├── useAudio.ts           # Soundtrack: playback, peaks, real duration
-    │   └── useAnimationFrame.ts  # rAF loop: the playhead and the readout
+    │   ├── useAnimationFrame.ts  # rAF loop: the playhead and the readout
+    │   └── useCueDrag.ts         # Dragging and resizing a cue
     ├── utils/
     │   ├── cn.ts                 # clsx + tailwind-merge
     │   ├── time.ts               # mm:ss parsing, formatting, filename sanitising
     │   ├── timeline.ts           # Bounded axis scale, time <-> position
+    │   ├── dragCue.ts            # Where a dragged cue lands
     │   ├── waveform.ts           # Peak extraction from decoded samples
     │   ├── storage.ts            # localStorage cache
     │   ├── migration.ts          # Schema migration chain

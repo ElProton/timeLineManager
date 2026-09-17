@@ -93,15 +93,17 @@ The file input is reset after each attempt so the same file can be retried.
 
 **File:** [src/components/Timeline.tsx](../src/components/Timeline.tsx)
 
-| Prop              | Type                        | Description                         |
-| ----------------- | --------------------------- | ----------------------------------- |
-| `data`            | `ProjectData`               | The whole project                   |
-| `filteredTrackId` | `string \| null`            | `null` shows every track            |
-| `audio`           | `TimelineAudio?`            | Absent or detached: no playhead     |
-| `onEditCue`       | `(cue: Cue) => void`        | Opens the cue editor                |
-| `onDeleteCue`     | `(cueId: string) => void`   | Asks for confirmation, then deletes |
-| `onEditTrack`     | `(track: Track) => void`    | Opens the track editor              |
-| `onDeleteTrack`   | `(trackId: string) => void` | Asks for confirmation, then deletes |
+| Prop              | Type                        | Description                                   |
+| ----------------- | --------------------------- | --------------------------------------------- |
+| `data`            | `ProjectData`               | The whole project                             |
+| `filteredTrackId` | `string \| null`            | `null` shows every track                      |
+| `audio`           | `TimelineAudio?`            | Absent or detached: no playhead               |
+| `zoom`            | `number?`                   | 1 fits the container, 4 is four times as wide |
+| `onEditCue`       | `(cue: Cue) => void`        | Opens the cue editor                          |
+| `onMoveCue`       | `(cue: Cue) => void`        | A cue retimed on the timeline itself          |
+| `onDeleteCue`     | `(cueId: string) => void`   | Asks for confirmation, then deletes           |
+| `onEditTrack`     | `(track: Track) => void`    | Opens the track editor                        |
+| `onDeleteTrack`   | `(trackId: string) => void` | Asks for confirmation, then deletes           |
 
 `TimelineAudio` is deliberately narrower than what `useAudio` returns — the timeline
 draws a position and asks for a new one, and knows nothing about files or playback:
@@ -153,7 +155,43 @@ described — and `AudioBar` offers to fix it.
 
 **Clicking the time axis or the waveform** moves the playhead there, via
 `percentToTime`. Cue rows are deliberately not click-to-seek: a click there opens the
-cue. Keyboard seeking lives in `AudioBar` (arrow keys), not here.
+cue.
+
+### Retiming a cue
+
+Grab a block to move it, take either edge to stretch it. `useCueDrag` runs the
+gesture; the arithmetic is in [`dragCue`](utilities.md#dragcue--retiming-a-cue).
+
+- **One gesture is one undo entry.** `pointermove` fires around sixty times a
+  second and the reducer snapshots on every `SAVE_CUE`, capped at fifty, so
+  dispatching per move would erase the whole undo history in a single drag. One
+  `SAVE_CUE` leaves at the end — none at all if the cue did not move.
+- **The preview does not go through React**: `left` and `width` are written
+  straight onto the blocks, as the playhead's transform is. A multi-track cue is
+  found by `data-cue-id`, so every row it appears on moves together.
+- **Snapping is to the playhead and to other cues' edges**, never to the axis
+  markers. Markers were tried first: at a 5-second interval and an 8px
+  tolerance a third of the timeline snapped to a round number, and 78 seconds
+  was unreachable. A playhead and a neighbouring cue are things someone aims at.
+- **Arrow keys retime a focused cue** — `Shift` for the end, `Alt` for the
+  start. They call `preventDefault`, which is how `AudioBar` knows to leave the
+  transport alone: a cue is a `div` with `role="button"`, so its own
+  `isTypingTarget` check cannot recognise it.
+
+### Zoom
+
+`zoom` is applied as a single width on the content node. Everything inside is a
+percentage of its lane, so cues, markers, the waveform and the playhead all
+follow with no arithmetic changing. The track labels are `sticky left-0` so the
+names survive scrolling, and the axis is given the lane's measured width so it
+draws more labels rather than the same ones further apart.
+
+The control lives in `App`, not here: this component's node is what `useExport`
+captures, so a control inside it would appear in the JPEG.
+
+Measuring the lane uses a `ResizeObserver`, which jsdom does not provide —
+whoever writes the first `Timeline` test will need a stub, the way
+`useAudio.test.ts` stubs Web Audio.
 
 **Keyboard and pointer.** A cue is a `role="button"` with `tabIndex={0}`, opens
 on click, `Enter` or `Space`, and carries an `aria-label` naming it and its time

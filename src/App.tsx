@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { ProjectInit } from "./components/ProjectInit";
 import { Timeline } from "./components/Timeline";
 import { CueModal } from "./components/CueModal";
@@ -25,7 +26,12 @@ import {
   Redo2,
   TriangleAlert,
   X,
+  ZoomIn,
+  ZoomOut,
 } from "lucide-react";
+
+/** Eight times is already ~8500px of timeline for a fifteen-minute show. */
+const MAX_ZOOM = 8;
 
 export default function App() {
   const project = useProjectManager();
@@ -39,6 +45,9 @@ export default function App() {
   } = useExport(project.projectData);
   const { confirm, confirmProps } = useConfirm();
   const audio = useAudio();
+  // View state, not project data: it must not reach ProjectData any more than
+  // the audio does.
+  const [zoom, setZoom] = useState(1);
 
   if (!project.projectData) {
     return (
@@ -321,18 +330,52 @@ export default function App() {
         {/* Timeline Area */}
         <div className="flex-1 bg-white rounded-xl shadow-sm border border-neutral-200 overflow-hidden flex flex-col">
           <div className="p-4 border-b border-neutral-100 bg-neutral-50/50 flex justify-between items-center">
-            <h2 className="font-semibold text-neutral-700">Timeline View</h2>
-            {project.filteredTrackId && (
-              <span className="px-2.5 py-1 bg-indigo-100 text-indigo-800 text-xs font-medium rounded-full">
-                Filtered View
+            <div className="flex items-center gap-3">
+              <h2 className="font-semibold text-neutral-700">Timeline View</h2>
+              {project.filteredTrackId && (
+                <span className="px-2.5 py-1 bg-indigo-100 text-indigo-800 text-xs font-medium rounded-full">
+                  Filtered View
+                </span>
+              )}
+            </div>
+
+            {/* Zoom. Deliberately here and not inside Timeline: the timeline's
+                own node is what useExport captures, so a control placed in it
+                would end up in the JPEG. */}
+            <div className="flex items-center gap-1">
+              <button
+                type="button"
+                onClick={() => setZoom((current) => Math.max(1, current / 2))}
+                disabled={zoom <= 1}
+                className="p-1.5 text-neutral-500 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+                aria-label="Zoom out"
+                title="Zoom out"
+              >
+                <ZoomOut className="w-4 h-4" />
+              </button>
+              <span className="text-xs font-medium text-neutral-500 tabular-nums w-8 text-center">
+                {zoom}&times;
               </span>
-            )}
+              <button
+                type="button"
+                onClick={() =>
+                  setZoom((current) => Math.min(MAX_ZOOM, current * 2))
+                }
+                disabled={zoom >= MAX_ZOOM}
+                className="p-1.5 text-neutral-500 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+                aria-label="Zoom in"
+                title="Zoom in"
+              >
+                <ZoomIn className="w-4 h-4" />
+              </button>
+            </div>
           </div>
           <div className="p-6 overflow-auto flex-1">
             <Timeline
               ref={timelineRef}
               data={projectData}
               filteredTrackId={project.filteredTrackId}
+              zoom={zoom}
               audio={{
                 isAttached: audio.isAttached,
                 getCurrentTime: audio.getCurrentTime,

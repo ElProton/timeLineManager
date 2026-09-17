@@ -1,4 +1,4 @@
-import { forwardRef, useMemo, useRef, useState } from "react";
+import { forwardRef, useEffect, useMemo, useRef, useState } from "react";
 import type {
   CSSProperties,
   KeyboardEvent,
@@ -40,6 +40,8 @@ interface Props {
   data: ProjectData;
   filteredTrackId: string | null;
   audio?: TimelineAudio;
+  /** 1 fits the container; 4 makes the timeline four times as wide. */
+  zoom?: number;
   onEditCue: (cue: Cue) => void;
   /** A cue retimed on the timeline itself, by pointer or by keyboard. */
   onMoveCue: (cue: Cue) => void;
@@ -83,6 +85,7 @@ export const Timeline = forwardRef<HTMLDivElement, Props>(
       data,
       filteredTrackId,
       audio,
+      zoom = 1,
       onEditCue,
       onMoveCue,
       onDeleteCue,
@@ -108,9 +111,28 @@ export const Timeline = forwardRef<HTMLDivElement, Props>(
         ? cues.find((cue) => cue.id === hoveredCueId && cue.trackIds.length > 1)
         : undefined;
 
+    // How wide a lane actually is, so the axis can pick an interval its labels
+    // fit into. Measured rather than derived: the lane is `flex-1` after a
+    // fixed gutter, so zoom does not scale it by a round factor.
+    const axisLaneRef = useRef<HTMLDivElement>(null);
+    const [laneWidth, setLaneWidth] = useState(0);
+
+    useEffect(() => {
+      const lane = axisLaneRef.current;
+      if (!lane) return;
+      // jsdom has no ResizeObserver. Nothing renders Timeline in a test today;
+      // whoever adds the first one will need a stub, as `useAudio.test.ts`
+      // does for Web Audio.
+      const observer = new ResizeObserver(() => setLaneWidth(lane.clientWidth));
+      observer.observe(lane);
+      setLaneWidth(lane.clientWidth);
+      return () => observer.disconnect();
+    }, []);
+
     const markers = useMemo(
-      () => markerTimes(durationSeconds),
-      [durationSeconds],
+      // 0 before the first measurement: fall back to the duration alone.
+      () => markerTimes(durationSeconds, laneWidth || undefined),
+      [durationSeconds, laneWidth],
     );
 
     const hasAudio = audio?.isAttached ?? false;
@@ -217,15 +239,23 @@ export const Timeline = forwardRef<HTMLDivElement, Props>(
         className="bg-white rounded-xl shadow-sm border border-neutral-200 overflow-x-auto relative"
         style={{ minWidth: "800px" }}
       >
-        <div ref={ref} className="min-w-max p-6 pb-12 bg-white">
+        {/* Zoom is one width. Everything inside positions as a percentage of
+            its lane, so cues, markers, the waveform and the playhead all
+            follow without any arithmetic changing. */}
+        <div
+          ref={ref}
+          className="min-w-max p-6 pb-12 bg-white"
+          style={{ width: `${zoom * 100}%` }}
+        >
           {/* The frame every overlay is positioned against — see LaneOverlay. */}
           <div className="relative">
             {/* Time axis */}
             <div className={cn("flex", hasAudio ? "mb-2" : "mb-6")}>
-              <div className="w-48 shrink-0 pr-4 flex items-center justify-end text-neutral-500 font-medium text-sm">
+              <div className="w-48 shrink-0 pr-4 flex items-center justify-end text-neutral-500 font-medium text-sm sticky left-0 z-30 bg-white">
                 {metadata.soundtrack}
               </div>
               <div
+                ref={axisLaneRef}
                 className={cn(
                   "flex-1 relative h-8 bg-neutral-100 rounded-lg border border-neutral-200",
                   hasAudio && "cursor-pointer",
@@ -250,7 +280,7 @@ export const Timeline = forwardRef<HTMLDivElement, Props>(
             {/* Soundtrack */}
             {hasAudio && (
               <div className="flex mb-6">
-                <div className="w-48 shrink-0 pr-4" />
+                <div className="w-48 shrink-0 pr-4 sticky left-0 z-30 bg-white" />
                 <div
                   className="flex-1 relative h-16 bg-neutral-50 rounded-lg overflow-hidden cursor-pointer"
                   onClick={seekFromPointer}
@@ -274,9 +304,9 @@ export const Timeline = forwardRef<HTMLDivElement, Props>(
                 );
 
                 return (
-                  <div key={track.id} className="flex group relative z-10">
+                  <div key={track.id} className="flex group relative">
                     {/* Track label */}
-                    <div className="w-48 shrink-0 pr-4 flex items-center justify-between border-r border-neutral-200 bg-white">
+                    <div className="w-48 shrink-0 pr-4 flex items-center justify-between border-r border-neutral-200 bg-white sticky left-0 z-30">
                       <span
                         className="font-medium text-neutral-800 truncate"
                         title={track.name}
