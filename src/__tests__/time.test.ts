@@ -1,6 +1,7 @@
 import { describe, it, expect } from "vitest";
 import {
   formatTime,
+  formatTimePrecise,
   parseTime,
   isValidTimeFormat,
   sanitiseFilename,
@@ -160,5 +161,28 @@ describe("sanitiseFilename", () => {
 
   it("keeps accented characters", () => {
     expect(sanitiseFilename("Boléro final")).toBe("Boléro_final");
+  });
+});
+
+describe("formatTimePrecise", () => {
+  it("shows tenths, so a moving playhead reads as moving", () => {
+    expect(formatTimePrecise(0)).toBe("00:00.0");
+    expect(formatTimePrecise(12.4)).toBe("00:12.4");
+    expect(formatTimePrecise(75.06)).toBe("01:15.0");
+  });
+
+  it("truncates rather than rounding, like formatTime", () => {
+    // Rounding would make it read 01:00.0 while the second is still 59.
+    expect(formatTimePrecise(59.99)).toBe("00:59.9");
+  });
+
+  it("never shows a negative position", () => {
+    expect(formatTimePrecise(-5)).toBe("00:00.0");
+  });
+
+  it("agrees with formatTime on whole seconds", () => {
+    for (const seconds of [0, 7, 60, 599, 3600]) {
+      expect(formatTimePrecise(seconds)).toBe(`${formatTime(seconds)}.0`);
+    }
   });
 });

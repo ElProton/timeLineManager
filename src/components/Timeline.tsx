@@ -1,14 +1,34 @@
-import { forwardRef, useMemo, useState } from "react";
-import type { CSSProperties, ReactNode } from "react";
+import { forwardRef, useMemo, useRef, useState } from "react";
+import type { CSSProperties, MouseEvent, ReactNode } from "react";
 import type { ProjectData, Cue, Track } from "../types";
+import type { Peak } from "../utils/waveform";
 import { formatTime } from "../utils/time";
 import { Edit2, Trash2 } from "lucide-react";
 import { cn } from "../utils/cn";
-import { markerTimes, timeToPercent } from "../utils/timeline";
+import { markerTimes, percentToTime, timeToPercent } from "../utils/timeline";
+import { useAnimationFrame } from "../hooks/useAnimationFrame";
+import { Waveform } from "./Waveform";
+
+/**
+ * What the timeline needs of an attached soundtrack.
+ *
+ * Narrower than `useAudio`'s return on purpose: the timeline draws a position
+ * and asks for a new one, and knows nothing about files or playback state.
+ */
+export interface TimelineAudio {
+  isAttached: boolean;
+  /** Read every animation frame, so deliberately not a value. */
+  getCurrentTime: () => number;
+  /** The file's own length, which need not match the timeline's. */
+  duration: number;
+  peaks: Peak[];
+  seek: (seconds: number) => void;
+}
 
 interface Props {
   data: ProjectData;
   filteredTrackId: string | null;
+  audio?: TimelineAudio;
   onEditCue: (cue: Cue) => void;
   onDeleteCue: (cueId: string) => void;
   onEditTrack: (track: Track) => void;
@@ -49,6 +69,7 @@ export const Timeline = forwardRef<HTMLDivElement, Props>(
     {
       data,
       filteredTrackId,
+      audio,
       onEditCue,
       onDeleteCue,
       onEditTrack,
@@ -57,6 +78,7 @@ export const Timeline = forwardRef<HTMLDivElement, Props>(
     ref,
   ) => {
     const [hoveredCueId, setHoveredCueId] = useState<string | null>(null);
+    const playheadRef = useRef<HTMLDivElement>(null);
 
     const { metadata, tracks, cues } = data;
     const { durationSeconds } = metadata;
@@ -77,6 +99,46 @@ export const Timeline = forwardRef<HTMLDivElement, Props>(
       [durationSeconds],
     );
 
+    const hasAudio = audio?.isAttached ?? false;
+
+    // The waveform covers the span the file actually occupies on this
+    // timeline, because the playhead is scaled to the timeline's duration and
+    // the two have to agree. A two-minute file on a ten-minute timeline draws
+    // across the first fifth; a longer one is cut off at the end. That the
+    // waveform does not fill the lane is the point — it is the length mismatch,
+    // visible.
+    const waveformPercent =
+      audio && audio.duration > 0
+        ? Math.min(100, timeToPercent(audio.duration, durationSeconds))
+        : 100;
+
+    useAnimationFrame(hasAudio, () => {
+      const playhead = playheadRef.current;
+      if (!playhead || !audio) return;
+      // Clamped here rather than in `timeToPercent`: a cue past the end should
+      // visibly overflow its lane, but a playhead past it is just the file
+      // being longer than the timeline, and belongs at the end.
+      const percent = Math.min(
+        100,
+        Math.max(0, timeToPercent(audio.getCurrentTime(), durationSeconds)),
+      );
+      // The element spans the lane, so a percentage translate moves it by that
+      // share of the lane — a composited transform that never reads layout.
+      playhead.style.transform = `translateX(${percent}%)`;
+    });
+
+    /** Moves the playhead to wherever the reader pressed on the axis. */
+    const seekFromPointer = (event: MouseEvent<HTMLDivElement>) => {
+      if (!audio?.isAttached) return;
+      const lane = event.currentTarget;
+      // `clientLeft`/`clientWidth` are the padding box — the frame everything
+      // inside the lane is positioned against. The bounding rect includes the
+      // border and would be a pixel out.
+      const left = lane.getBoundingClientRect().left + lane.clientLeft;
+      const percent = ((event.clientX - left) / lane.clientWidth) * 100;
+      audio.seek(percentToTime(percent, durationSeconds));
+    };
+
     return (
       <div
         className="bg-white rounded-xl shadow-sm border border-neutral-200 overflow-x-auto relative"
@@ -86,11 +148,18 @@ export const Timeline = forwardRef<HTMLDivElement, Props>(
           {/* The frame every overlay is positioned against — see LaneOverlay. */}
           <div className="relative">
             {/* Time axis */}
-            <div className="flex mb-6">
+            <div className={cn("flex", hasAudio ? "mb-2" : "mb-6")}>
               <div className="w-48 shrink-0 pr-4 flex items-center justify-end text-neutral-500 font-medium text-sm">
                 {metadata.soundtrack}
               </div>
-              <div className="flex-1 relative h-8 bg-neutral-100 rounded-lg border border-neutral-200">
+              <div
+                className={cn(
+                  "flex-1 relative h-8 bg-neutral-100 rounded-lg border border-neutral-200",
+                  hasAudio && "cursor-pointer",
+                )}
+                onClick={seekFromPointer}
+                title={hasAudio ? "Click to move the playhead" : undefined}
+              >
                 {markers.map((time) => (
                   <div
                     key={time}
@@ -104,6 +173,25 @@ export const Timeline = forwardRef<HTMLDivElement, Props>(
                 ))}
               </div>
             </div>
+
+            {/* Soundtrack */}
+            {hasAudio && (
+              <div className="flex mb-6">
+                <div className="w-48 shrink-0 pr-4" />
+                <div
+                  className="flex-1 relative h-16 bg-neutral-50 rounded-lg overflow-hidden cursor-pointer"
+                  onClick={seekFromPointer}
+                  title="Click to move the playhead"
+                >
+                  <div
+                    className="absolute inset-y-0 left-0"
+                    style={{ width: `${waveformPercent}%` }}
+                  >
+                    <Waveform peaks={audio?.peaks ?? []} />
+                  </div>
+                </div>
+              </div>
+            )}
 
             {/* Track rows */}
             <div className="space-y-4">
@@ -261,6 +349,21 @@ export const Timeline = forwardRef<HTMLDivElement, Props>(
                     backgroundColor: `${bandCue.color}10`,
                   }}
                 />
+              </LaneOverlay>
+            )}
+
+            {/* Playhead */}
+            {hasAudio && (
+              <LaneOverlay className="z-20">
+                <div
+                  ref={playheadRef}
+                  className="absolute inset-0"
+                  style={{ willChange: "transform" }}
+                >
+                  <div className="absolute top-0 bottom-0 -ml-px w-0.5 bg-red-500">
+                    <div className="w-2.5 h-2.5 -ml-1 -mt-1 rounded-full bg-red-500" />
+                  </div>
+                </div>
               </LaneOverlay>
             )}
           </div>
