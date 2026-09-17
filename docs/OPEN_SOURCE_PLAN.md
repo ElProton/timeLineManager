@@ -327,6 +327,67 @@ l'adresse IP de chaque lecteur. C'est précisément la règle que `CONTRIBUTING.
 déclare non négociable. Corrigé : pile de polices système, zéro requête sortante,
 vérifié au navigateur sur une session complète.
 
+### Lot 5 — Éditer la timeline sans passer par une modale (livré)
+
+Le ROADMAP disait lui-même que retaper `mm:ss` dans une modale était « la première
+chose qui rend l'usage réel pénible ». Le lot 4 l'avait aggravé : on entend où placer
+le top, et il faut quand même taper le chiffre.
+
+1. `utils/dragCue.ts` : tout le calcul du glissement, pur et testé. Arrondi à la
+   seconde — **contrainte, pas préférence** : `isValidTimeFormat` n'accepte que
+   `mm:ss` et `formatTime` tronque, donc un cue laissé à 12,37 s se rouvrirait à
+   `00:12` et se déplacerait à l'enregistrement.
+2. `markerStep(durée, largeur?)` : l'axe tient compte de la place qu'une étiquette
+   occupe. Corrige le chevauchement à 40 s (41 étiquettes à 26 px) **et** rend le
+   zoom utile — 4× gagne des étiquettes au lieu de les espacer.
+3. `useCueDrag` : **un geste = une entrée d'annulation.** `MAX_HISTORY = 50` et le
+   reducer photographie à chaque `SAVE_CUE` : dispatcher à chaque `pointermove`
+   aurait effacé tout l'historique en un glissement. Vérifié au navigateur en
+   comptant les `Undo`, pas en le supposant.
+4. Clavier : flèches pour déplacer, `Shift` pour le bord de fin, `Alt` pour le début.
+   Conflit avec le transport du lot 4 résolu par `preventDefault` /
+   `defaultPrevented`.
+5. Zoom : une seule largeur sur le nœud de contenu, libellés de piste collants,
+   contrôle placé dans `App` pour rester hors du JPEG exporté.
+
+**Deux corrections que seul le navigateur a trouvées :** les poignées de
+redimensionnement déclenchaient aussi le glissement du bloc derrière elles
+(`stopPropagation` manquant) ; et l'aimantation aux marqueurs de l'axe rendait un
+tiers de la timeline inatteignable — elle ne vise plus que la tête de lecture et les
+bords des autres cues.
+
+### Lot 6 — Mettre `Timeline` et `AudioBar` sous test (livré)
+
+`Timeline.tsx` fait 480 lignes et porte trois lots — positionnement, bande de survol,
+forme d'onde, tête de lecture, clic pour se positionner, glissement, redimensionnement,
+clavier, zoom. Rien ne le testait. Pour un projet censé survivre à son auteur, c'est
+le fichier qu'un inconnu n'ose pas toucher.
+
+48 tests ajoutés (255 → 303). Le plus utile porte sur le glissement : un geste émet
+**exactement un** `onMoveCue`, à la fin, jamais pendant ; la poignée droite ne change
+que `timeEnd` ; un appui qui ne va nulle part reste un clic. Et le contrat des flèches
+introduit au lot 5 est épinglé **des deux côtés** — il traverse deux composants, donc
+rien de local ne l'aurait attrapé en se cassant.
+
+`src/__tests__/browserStubs.ts` porte ce que jsdom n'implémente pas — une largeur pour
+des éléments qu'il déclare à zéro, un `ResizeObserver`, un `getContext` silencieux.
+**Importés et appelés par le test qui en a besoin, jamais posés dans `setup.ts`** : un
+global y cacherait l'API manquante à tous les autres tests, et ce qui manque à jsdom
+est justement ce qu'il faut savoir — cela a décidé l'architecture de ce projet trois
+fois.
+
+**Cinq mutations passées avant de retenir les tests** : retirer `stopPropagation`,
+retirer `preventDefault`, dispatcher à chaque `pointermove`, retirer la garde
+`defaultPrevented`, retirer la garde de saisie. Chacune fait tomber le test prévu,
+nommément. Un test qui ne tombe pas quand le code casse ne teste rien.
+
+La ligne de partage est consignée dans `dev_setup.md` : les tests épinglent le
+comportement et les contrats, le navigateur épingle la géométrie. Les deux bogues du
+lot 5 étaient un de chaque.
+
+Aucun code de production modifié ; les vérifications navigateur du lot 5 repassent à
+l'identique.
+
 ### Suite — backlog public
 
 Section 3.2, priorisée dans `ROADMAP.md`. Aucun engagement de délai. Les sujets sont
@@ -346,6 +407,8 @@ avec leurs pièges consignés dans le ROADMAP.
 | 2026-09-17 | Lot 2            | Schéma v2 (`Track`/`Cue`, `soundtrack` optionnel) et migration v0→v1→v2 non mutante. `isValidProjectData` devient le point de passage unique, import fichier compris. Modale accessible écrite à la main (jsdom n'implémente ni `showModal()` ni `close()`), `confirm()`/`alert()` natifs remplacés. Bugs B1–B12 corrigés.                                                                                                                                                                                                                             |
 | 2026-09-17 | Lot 3            | Documentation remise en phase avec le code. `architecture.md` et `components.md` réécrits depuis les sources ; `utilities.md` réparé — deux modifications du lot 2 n'y étaient jamais arrivées (un `str.replace` non asserté) et le fichier se contredisait ; `dev_setup.md` corrigé (arborescence) ; `ROADMAP.md` corrigé (accessibilité et i18n périmées) et complété (performance de rendu). **Toute la doc passe en anglais.** `optimisation.md` supprimé au profit du ROADMAP. Vérificateur de liens `scripts/check-links.mjs` branché sur la CI. |
 | 2026-09-17 | Lot 4            | L'audio. `timeToPercent`/`percentToTime` et `LaneOverlay` (la bande de survol était 144 px hors de son repère depuis toujours), `computePeaks` sans dépendance, `useAudio`, `AudioBar`, `Waveform`, tête de lecture hors rendu React, clic pour se positionner, adoption de la durée via le chemin de troncature existant. **Et un appel réseau supprimé** : `index.css` chargeait Inter depuis Google Fonts. Bundle 86,8 → 89,9 ko gzip.                                                                                                              |
+| 2026-09-17 | Lot 5            | L'édition directe. `dragCue` (calcul pur, arrondi à la seconde imposé par `mm:ss`), `markerStep` tenant compte de la largeur — l'axe empilait 41 étiquettes sur 26 px à 40 s —, `useCueDrag` (**un geste = une entrée d'annulation**, mesuré au navigateur), clavier avec résolution du conflit de flèches hérité du lot 4, zoom et libellés collants. Deux bogues trouvés au navigateur seulement : poignées sans `stopPropagation`, et aimantation aux marqueurs rendant un tiers de la timeline inatteignable.                                      |
+| 2026-09-17 | Lot 6            | `Timeline` et `AudioBar` sous test — 255 → 303. Le glissement épinglé (un geste = un `onMoveCue`, la poignée droite ne bouge que la fin), le contrat des flèches épinglé des deux côtés. `browserStubs.ts` pour ce que jsdom n'a pas, importé par les tests et jamais dans `setup.ts`. **Cinq mutations** passées avant de retenir quoi que ce soit. Aucun code de production modifié.                                                                                                                                                                 |
 
 ## 6. À faire à la main, hors dépôt
 

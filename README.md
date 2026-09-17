@@ -32,6 +32,10 @@ Import one of the [example projects](examples/) to see a filled-in timeline.
 - One **track** per row — a person, a team, a device, a channel
 - One coloured **cue** per timed block; a cue can span several tracks and is
   highlighted across all of them on hover
+- **Retime a cue on the timeline itself**: drag it, stretch it by either edge, or
+  nudge it with the arrow keys. It snaps to the playhead and to neighbouring cues,
+  and a whole gesture is a single undo
+- **Zoom** in to place cues to the second across a long track
 - Filter the view down to a single track
 - Undo / redo across every edit
 - Automatic save to browser storage, with session recovery on reload

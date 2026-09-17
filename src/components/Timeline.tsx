@@ -1,13 +1,24 @@
-import { forwardRef, useMemo, useRef, useState } from "react";
-import type { CSSProperties, MouseEvent, ReactNode } from "react";
+import { forwardRef, useEffect, useMemo, useRef, useState } from "react";
+import type {
+  CSSProperties,
+  KeyboardEvent,
+  MouseEvent,
+  ReactNode,
+} from "react";
 import type { ProjectData, Cue, Track } from "../types";
 import type { Peak } from "../utils/waveform";
 import { formatTime } from "../utils/time";
 import { Edit2, Trash2 } from "lucide-react";
 import { cn } from "../utils/cn";
 import { markerTimes, percentToTime, timeToPercent } from "../utils/timeline";
+import { dragCue } from "../utils/dragCue";
+import type { DragMode } from "../utils/dragCue";
 import { useAnimationFrame } from "../hooks/useAnimationFrame";
+import { useCueDrag } from "../hooks/useCueDrag";
 import { Waveform } from "./Waveform";
+
+/** How far one press of an arrow key moves a cue, in seconds. */
+const NUDGE_SECONDS = 1;
 
 /**
  * What the timeline needs of an attached soundtrack.
@@ -29,7 +40,11 @@ interface Props {
   data: ProjectData;
   filteredTrackId: string | null;
   audio?: TimelineAudio;
+  /** 1 fits the container; 4 makes the timeline four times as wide. */
+  zoom?: number;
   onEditCue: (cue: Cue) => void;
+  /** A cue retimed on the timeline itself, by pointer or by keyboard. */
+  onMoveCue: (cue: Cue) => void;
   onDeleteCue: (cueId: string) => void;
   onEditTrack: (track: Track) => void;
   onDeleteTrack: (trackId: string) => void;
@@ -70,7 +85,9 @@ export const Timeline = forwardRef<HTMLDivElement, Props>(
       data,
       filteredTrackId,
       audio,
+      zoom = 1,
       onEditCue,
+      onMoveCue,
       onDeleteCue,
       onEditTrack,
       onDeleteTrack,
@@ -94,9 +111,28 @@ export const Timeline = forwardRef<HTMLDivElement, Props>(
         ? cues.find((cue) => cue.id === hoveredCueId && cue.trackIds.length > 1)
         : undefined;
 
+    // How wide a lane actually is, so the axis can pick an interval its labels
+    // fit into. Measured rather than derived: the lane is `flex-1` after a
+    // fixed gutter, so zoom does not scale it by a round factor.
+    const axisLaneRef = useRef<HTMLDivElement>(null);
+    const [laneWidth, setLaneWidth] = useState(0);
+
+    useEffect(() => {
+      const lane = axisLaneRef.current;
+      if (!lane) return;
+      // jsdom has no ResizeObserver. Nothing renders Timeline in a test today;
+      // whoever adds the first one will need a stub, as `useAudio.test.ts`
+      // does for Web Audio.
+      const observer = new ResizeObserver(() => setLaneWidth(lane.clientWidth));
+      observer.observe(lane);
+      setLaneWidth(lane.clientWidth);
+      return () => observer.disconnect();
+    }, []);
+
     const markers = useMemo(
-      () => markerTimes(durationSeconds),
-      [durationSeconds],
+      // 0 before the first measurement: fall back to the duration alone.
+      () => markerTimes(durationSeconds, laneWidth || undefined),
+      [durationSeconds, laneWidth],
     );
 
     const hasAudio = audio?.isAttached ?? false;
@@ -127,6 +163,65 @@ export const Timeline = forwardRef<HTMLDivElement, Props>(
       playhead.style.transform = `translateX(${percent}%)`;
     });
 
+    /**
+     * Where a dragged edge jumps to: the playhead, and other cues' edges.
+     *
+     * Both are things someone means — "start where the music does", "start
+     * exactly where that one ends". The axis markers are deliberately **not**
+     * in the list, though they were at first: at a 5-second interval and an
+     * 8px tolerance, roughly a third of the timeline snapped to a round number
+     * and 78 seconds was simply not reachable. A grid of arbitrary round
+     * numbers is not something anyone is aiming at.
+     *
+     * Read when the gesture starts, so snapping to "where I stopped the music"
+     * means exactly that, and not wherever it has drifted to since.
+     */
+    const getSnapTargets = (draggedCueId: string) => {
+      const targets: number[] = [];
+      if (audio?.isAttached) targets.push(audio.getCurrentTime());
+      for (const other of cues) {
+        if (other.id === draggedCueId) continue;
+        targets.push(other.timeStart, other.timeEnd);
+      }
+      return targets;
+    };
+
+    const { startDrag, consumeDrag } = useCueDrag({
+      durationSeconds,
+      getSnapTargets,
+      onCommit: onMoveCue,
+    });
+
+    /**
+     * Retimes a focused cue from the keyboard.
+     *
+     * Without this the feature would be pointer-only, which on a project that
+     * gave its dialogs a full focus trap would be a step backwards. It also
+     * has to call `preventDefault`: the transport listens for the arrow keys
+     * on `window` to seek the audio, and a cue is a `div` with
+     * `role="button"`, so it does not look like a control to that handler.
+     */
+    const nudgeCue = (event: KeyboardEvent<HTMLElement>, cue: Cue) => {
+      if (event.key !== "ArrowLeft" && event.key !== "ArrowRight") return false;
+
+      const direction = event.key === "ArrowLeft" ? -1 : 1;
+      const mode: DragMode = event.altKey
+        ? "resize-start"
+        : event.shiftKey
+          ? "resize-end"
+          : "move";
+
+      const next = dragCue(cue, mode, direction * NUDGE_SECONDS, {
+        durationSeconds,
+      });
+
+      event.preventDefault();
+      if (next.timeStart !== cue.timeStart || next.timeEnd !== cue.timeEnd) {
+        onMoveCue({ ...cue, ...next });
+      }
+      return true;
+    };
+
     /** Moves the playhead to wherever the reader pressed on the axis. */
     const seekFromPointer = (event: MouseEvent<HTMLDivElement>) => {
       if (!audio?.isAttached) return;
@@ -144,15 +239,23 @@ export const Timeline = forwardRef<HTMLDivElement, Props>(
         className="bg-white rounded-xl shadow-sm border border-neutral-200 overflow-x-auto relative"
         style={{ minWidth: "800px" }}
       >
-        <div ref={ref} className="min-w-max p-6 pb-12 bg-white">
+        {/* Zoom is one width. Everything inside positions as a percentage of
+            its lane, so cues, markers, the waveform and the playhead all
+            follow without any arithmetic changing. */}
+        <div
+          ref={ref}
+          className="min-w-max p-6 pb-12 bg-white"
+          style={{ width: `${zoom * 100}%` }}
+        >
           {/* The frame every overlay is positioned against — see LaneOverlay. */}
           <div className="relative">
             {/* Time axis */}
             <div className={cn("flex", hasAudio ? "mb-2" : "mb-6")}>
-              <div className="w-48 shrink-0 pr-4 flex items-center justify-end text-neutral-500 font-medium text-sm">
+              <div className="w-48 shrink-0 pr-4 flex items-center justify-end text-neutral-500 font-medium text-sm sticky left-0 z-30 bg-white">
                 {metadata.soundtrack}
               </div>
               <div
+                ref={axisLaneRef}
                 className={cn(
                   "flex-1 relative h-8 bg-neutral-100 rounded-lg border border-neutral-200",
                   hasAudio && "cursor-pointer",
@@ -177,7 +280,7 @@ export const Timeline = forwardRef<HTMLDivElement, Props>(
             {/* Soundtrack */}
             {hasAudio && (
               <div className="flex mb-6">
-                <div className="w-48 shrink-0 pr-4" />
+                <div className="w-48 shrink-0 pr-4 sticky left-0 z-30 bg-white" />
                 <div
                   className="flex-1 relative h-16 bg-neutral-50 rounded-lg overflow-hidden cursor-pointer"
                   onClick={seekFromPointer}
@@ -194,16 +297,16 @@ export const Timeline = forwardRef<HTMLDivElement, Props>(
             )}
 
             {/* Track rows */}
-            <div className="space-y-4">
+            <div className="space-y-4" data-timeline-rows>
               {visibleTracks.map((track) => {
                 const trackCues = cues.filter((cue) =>
                   cue.trackIds.includes(track.id),
                 );
 
                 return (
-                  <div key={track.id} className="flex group relative z-10">
+                  <div key={track.id} className="flex group relative">
                     {/* Track label */}
-                    <div className="w-48 shrink-0 pr-4 flex items-center justify-between border-r border-neutral-200 bg-white">
+                    <div className="w-48 shrink-0 pr-4 flex items-center justify-between border-r border-neutral-200 bg-white sticky left-0 z-30">
                       <span
                         className="font-medium text-neutral-800 truncate"
                         title={track.name}
@@ -253,11 +356,15 @@ export const Timeline = forwardRef<HTMLDivElement, Props>(
                         return (
                           <div
                             key={cue.id}
+                            data-cue-id={cue.id}
                             role="button"
                             tabIndex={0}
-                            aria-label={`${cue.description}, ${formatTime(cue.timeStart)} to ${formatTime(cue.timeEnd)}`}
+                            aria-label={`${cue.description}, ${formatTime(cue.timeStart)} to ${formatTime(cue.timeEnd)}. Drag to retime, or use the arrow keys.`}
                             className={cn(
-                              "absolute top-1.5 bottom-1.5 rounded-md shadow-sm border flex items-start p-1 overflow-hidden transition-all cursor-pointer group/action",
+                              "absolute top-1.5 bottom-1.5 rounded-md shadow-sm border flex items-start p-1 overflow-hidden cursor-grab active:cursor-grabbing group/action",
+                              // No `transition-all`: a transition on `left` and
+                              // `width` fights a drag, which sets them sixty
+                              // times a second.
                               isHovered
                                 ? "ring-2 ring-offset-1 z-20"
                                 : "z-10 hover:z-20 focus:z-20",
@@ -280,14 +387,45 @@ export const Timeline = forwardRef<HTMLDivElement, Props>(
                             onMouseLeave={() => setHoveredCueId(null)}
                             onFocus={() => setHoveredCueId(cue.id)}
                             onBlur={() => setHoveredCueId(null)}
-                            onClick={() => onEditCue(cue)}
+                            onPointerDown={(event) =>
+                              startDrag(event, cue, "move")
+                            }
+                            onClick={() => {
+                              // A drag ends in a pointerup, which fires a
+                              // click. That click is not a request to edit.
+                              if (!consumeDrag()) onEditCue(cue);
+                            }}
                             onKeyDown={(event) => {
+                              if (nudgeCue(event, cue)) return;
                               if (event.key === "Enter" || event.key === " ") {
                                 event.preventDefault();
                                 onEditCue(cue);
                               }
                             }}
                           >
+                            {/* Resize handles, on the two edges */}
+                            <div
+                              aria-hidden="true"
+                              onPointerDown={(event) => {
+                                // Without this the block behind the handle
+                                // starts its own "move" gesture on the way up,
+                                // and overwrites this one.
+                                event.stopPropagation();
+                                startDrag(event, cue, "resize-start");
+                              }}
+                              className="absolute inset-y-0 left-0 w-2 cursor-ew-resize opacity-0 group-hover/action:opacity-100 focus-within:opacity-100 z-30"
+                              style={{ backgroundColor: `${cue.color}60` }}
+                            />
+                            <div
+                              aria-hidden="true"
+                              onPointerDown={(event) => {
+                                event.stopPropagation();
+                                startDrag(event, cue, "resize-end");
+                              }}
+                              className="absolute inset-y-0 right-0 w-2 cursor-ew-resize opacity-0 group-hover/action:opacity-100 focus-within:opacity-100 z-30"
+                              style={{ backgroundColor: `${cue.color}60` }}
+                            />
+
                             <div className="flex-1 text-[10px] leading-tight font-semibold flex items-start gap-1 overflow-hidden h-full w-full">
                               {isMulti && (
                                 <div

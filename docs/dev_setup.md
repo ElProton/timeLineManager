@@ -79,9 +79,10 @@ Vitest is configured in the same file as Vite:
 **What jsdom does not provide**, because it has repeatedly decided the architecture
 here, as of jsdom 28: no `<dialog>` `showModal()`/`close()`, no Web Audio
 (`AudioContext` and `OfflineAudioContext` are both `undefined`), no 2D canvas
-context (`getContext("2d")` returns `null`), no `ResizeObserver`, no IndexedDB, and
-a media element that reports "Not implemented" for `play()`, `pause()` and
-`load()`. `requestAnimationFrame` and `structuredClone` **are** available — the
+context (`getContext("2d")` returns `null`), no `ResizeObserver`, no IndexedDB, no
+`setPointerCapture`, **every element reporting a size of zero** from
+`getBoundingClientRect()` and `clientWidth`, and a media element that reports
+"Not implemented" for `play()`, `pause()` and `load()`. `requestAnimationFrame` and `structuredClone` **are** available — the
 latter was not always, and comments written before it landed said otherwise.
 
 Check before trusting any of that: it moves with the jsdom version. A throwaway
@@ -89,8 +90,29 @@ test that logs `typeof` for each one settles it in a few seconds.
 
 The rule that follows: logic goes into `src/utils/` as pure functions, and the
 irreducible browser glue stays as thin as it can be. Where a fake is unavoidable it
-goes **in the test file** — see `useAudio.test.ts` — never in `setup.ts`, so the
-missing API stays missing for every other test.
+is **imported and called by the test that needs it** — from
+[`browserStubs.ts`](../src/__tests__/browserStubs.ts), or written in the test file as
+`useAudio.test.ts` does — and never installed in `setup.ts`, so the missing API stays
+missing for every other test.
+
+### What a test can and cannot tell you here
+
+Because every element is zero-sized, the suite divides cleanly:
+
+|                                                           | Where it is checked                                                                                                                                            |
+| --------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Which callback fires, with what, how many times           | **Tests.** `Timeline.test.tsx` covers a drag emitting exactly one `onMoveCue`, the arrow-key contract between `Timeline` and `AudioBar`, every shortcut guard. |
+| Positions — `left`, `width`                               | **Tests**, because they are computed by `timeToPercent` and never measured.                                                                                    |
+| Whether anything lines up, is legible, or is drawn at all | **A real browser.** The hover band against its cue, the waveform's envelope, the axis labels colliding, the JPEG export.                                       |
+
+Neither substitutes for the other. The two bugs lot 5 shipped and caught were one of
+each: a resize handle that started the wrong gesture (a test would have caught it, and
+now does) and snapping that made a third of the timeline unreachable (only visible by
+using it).
+
+**Every test group here was mutation-checked before being kept** — the code it guards
+was broken on purpose to confirm the test failed, and failed by name. A test that does
+not fail when the code breaks is not testing anything.
 
 ## TypeScript configuration
 
@@ -161,11 +183,13 @@ timeLineManager/
     │   ├── useExport.ts          # JSON and JPEG export
     │   ├── useConfirm.ts         # Promise-based confirmation
     │   ├── useAudio.ts           # Soundtrack: playback, peaks, real duration
-    │   └── useAnimationFrame.ts  # rAF loop: the playhead and the readout
+    │   ├── useAnimationFrame.ts  # rAF loop: the playhead and the readout
+    │   └── useCueDrag.ts         # Dragging and resizing a cue
     ├── utils/
     │   ├── cn.ts                 # clsx + tailwind-merge
     │   ├── time.ts               # mm:ss parsing, formatting, filename sanitising
     │   ├── timeline.ts           # Bounded axis scale, time <-> position
+    │   ├── dragCue.ts            # Where a dragged cue lands
     │   ├── waveform.ts           # Peak extraction from decoded samples
     │   ├── storage.ts            # localStorage cache
     │   ├── migration.ts          # Schema migration chain
@@ -173,6 +197,7 @@ timeLineManager/
     └── __tests__/
         ├── setup.ts              # Vitest setup (jest-dom + cleanup)
         ├── fixtures.ts           # Shared ProjectData builders
+        ├── browserStubs.ts       # What jsdom does not implement, on request
         └── *.test.{ts,tsx}
 ```
 

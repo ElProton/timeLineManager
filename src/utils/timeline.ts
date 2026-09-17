@@ -5,22 +5,66 @@ const MARKER_STEPS = [1, 2, 5, 10, 15, 30, 60, 120, 300, 600, 900, 1800, 3600];
 const MAX_MARKERS = 40;
 
 /**
+ * Room one label needs, in pixels, before it runs into the next.
+ *
+ * A label is 10px text with a unit of horizontal padding, so "100:00" comes to
+ * roughly 40px; the rest is the gap that makes an axis readable rather than a
+ * smear.
+ */
+const MIN_LABEL_PX = 56;
+
+/**
+ * How many labels the axis may carry — by count, and by how wide it really is.
+ *
+ * The count alone was never enough. MAX_MARKERS stops the axis generating ten
+ * thousand markers but says nothing about whether they fit: a 40-second
+ * timeline drew 41 labels 26px apart, and they overlapped.
+ */
+function maxLabelsFor(laneWidthPx?: number): number {
+  if (
+    laneWidthPx === undefined ||
+    !Number.isFinite(laneWidthPx) ||
+    laneWidthPx <= 0
+  ) {
+    return MAX_MARKERS;
+  }
+  // Never fewer than two: a lane can be narrower than two labels, and an axis
+  // with a single tick is not an axis.
+  return Math.max(
+    2,
+    Math.min(MAX_MARKERS, Math.floor(laneWidthPx / MIN_LABEL_PX)),
+  );
+}
+
+/**
  * Picks a marker interval that keeps the time axis readable at any duration.
  *
- * The previous rule — 30s below ten minutes, 60s above — put 10,000 markers on
- * the page for a mistyped "9999:00", freezing the tab, while leaving a
- * three-minute timeline with only seven.
+ * Pass a lane width and it also accounts for the space a label needs, which is
+ * what makes zooming worth anything: four times the width earns more labels
+ * rather than the same ones spread further apart. Without it the interval comes
+ * from the duration alone, as it always did.
+ *
+ * The rule before either — 30s below ten minutes, 60s above — put 10,000
+ * markers on the page for a mistyped "9999:00", freezing the tab, while leaving
+ * a three-minute timeline with only seven.
  */
-export function markerStep(durationSeconds: number): number {
+export function markerStep(
+  durationSeconds: number,
+  laneWidthPx?: number,
+): number {
+  const maxLabels = maxLabelsFor(laneWidthPx);
   const fitting = MARKER_STEPS.find(
-    (step) => durationSeconds / step <= MAX_MARKERS,
+    (step) => durationSeconds / step <= maxLabels,
   );
-  return fitting ?? Math.ceil(durationSeconds / MAX_MARKERS);
+  return fitting ?? Math.ceil(durationSeconds / maxLabels);
 }
 
 /** The marker offsets, in seconds, for a timeline of this duration. */
-export function markerTimes(durationSeconds: number): number[] {
-  const step = markerStep(durationSeconds);
+export function markerTimes(
+  durationSeconds: number,
+  laneWidthPx?: number,
+): number[] {
+  const step = markerStep(durationSeconds, laneWidthPx);
   const times: number[] = [];
   for (let time = 0; time <= durationSeconds; time += step) {
     times.push(time);

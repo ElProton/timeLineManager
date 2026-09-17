@@ -78,14 +78,14 @@ re-attached each session — the project stores only its name, in
 
 ---
 
-## 3. Editing that does not fight you
+## 3. Editing that does not fight you — _direct editing delivered_
 
-Today every adjustment means opening a modal and retyping `mm:ss`. This is the first
-thing that makes real use painful.
+Grab a block on the timeline to retime it, take either edge to stretch it, or use
+the arrow keys. Zoom to place cues to the second across a long track. A gesture
+snaps to the playhead and to other cues' edges, and costs exactly one undo entry.
 
-- 🟣 **Drag and resize blocks directly on the timeline.**
-- 🔵 **Zoom on the time axis** — required as soon as you are placing cues to the second
-  across a fifteen-minute track.
+- ✅ **Drag and resize blocks directly on the timeline.**
+- ✅ **Zoom on the time axis.**
 - 🟢 **Keyboard shortcuts.** The transport has some — space plays and pauses, the
   arrow keys seek — handled in `AudioBar.tsx`, which also shows how to tell a
   shortcut from someone typing in a field. Still missing: `Ctrl+Z` / `Ctrl+Y` for the
@@ -146,22 +146,27 @@ Known defects, each small and self-contained. Good places to start.
 
 Most of the defects found in the first audit are fixed. What is left:
 
-- 🔵 **Component test coverage is thin.** The utilities, reducer, hooks, `Modal` and
-  the confirmation flow are covered; the form modals, `Timeline`, `ProjectInit`,
-  `AudioBar` and `Waveform` are not. The last two need a browser: jsdom has no Web
-  Audio, no canvas and no `ResizeObserver`.
-- 🟢 **The time axis crowds its own labels on short timelines.** `MAX_MARKERS = 40`
-  bounds the marker count so the tab cannot freeze, but says nothing about how wide a
-  label is: a 40-second timeline draws 41 labels about 26 px apart and they overlap.
-  The axis needs to pick its interval from the lane's width in pixels, not from the
-  duration alone. See `markerStep` in `src/utils/timeline.ts`.
+- 🟢 **`ProjectInit` and the form modals are still untested.** Everything else is:
+  the utilities, the reducer, the hooks, `Modal`, the confirmation flow, `Timeline`
+  and `AudioBar`. These three are plain forms with no geometry, so they need none of
+  the awkward parts — [`browserStubs.ts`](src/__tests__/browserStubs.ts) is there if
+  they do, and `Timeline.test.tsx` is the worked example. A good place to start.
+- 🔵 **`Waveform` can only be checked in a browser.** jsdom returns `null` from
+  `getContext("2d")`, so nothing it draws is observable in a test. The arithmetic
+  behind it, `computePeaks`, is pure and covered; what is missing is an automated
+  check that the drawing matches the samples, which means driving a real browser in
+  CI.
+- 🟢 **Snapping has no escape hatch.** A drag snaps to the playhead and to other
+  cues' edges within 8 px. There is no modifier to suspend it, which most editors
+  offer, and no visual sign of what an edge just snapped to.
 
 Already fixed, listed so nobody re-reports them: `00:99` accepted as a time, a
 mistyped duration freezing the tab, import validation weaker than cache validation, a
 mutating `migrateProject`, unsanitised export filenames, native `confirm()`/`alert()`,
 no error boundary, the unimplemented `beforeunload` guard, the Inter font fetched
-from Google Fonts on every load, and a multi-track hover band drawn 192 px left of
-the cues it bracketed.
+from Google Fonts on every load, a multi-track hover band drawn 192 px left of the
+cues it bracketed, and a time axis that crowded 41 labels into 26 px each on a
+short timeline.
 
 ---
 

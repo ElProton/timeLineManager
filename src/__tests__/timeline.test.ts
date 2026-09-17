@@ -102,3 +102,44 @@ describe("percentToTime", () => {
     expect(percentToTime(50, 0)).toBe(0);
   });
 });
+
+describe("markerStep, given the lane's width", () => {
+  it("stops the labels overlapping on a short timeline", () => {
+    // The bug this fixes: 40 seconds in a 1060px lane drew 41 labels 26px
+    // apart. A label needs about 40px, so they ran into each other.
+    const step = markerStep(40, 1060);
+    const labels = markerTimes(40, 1060).length;
+    expect(1060 / (40 / step)).toBeGreaterThanOrEqual(40);
+    expect(labels).toBeLessThan(41);
+  });
+
+  it("earns more labels as the lane gets wider, which is the point of zoom", () => {
+    const atOnce = markerTimes(40, 1060).length;
+    const atFour = markerTimes(40, 4240).length;
+    expect(atFour).toBeGreaterThan(atOnce);
+  });
+
+  it("still honours the marker cap however wide the lane", () => {
+    for (const width of [4240, 20000, 1e6]) {
+      expect(markerTimes(600, width).length).toBeLessThanOrEqual(41);
+    }
+  });
+
+  it("keeps a usable axis in a lane too narrow for two labels", () => {
+    // Two is the floor: a single tick is not an axis.
+    expect(markerTimes(600, 20).length).toBeGreaterThanOrEqual(2);
+    expect(markerStep(600, 20)).toBeGreaterThan(0);
+  });
+
+  it("falls back to the duration alone when the width is missing or absurd", () => {
+    for (const width of [undefined, 0, -100, NaN, Infinity]) {
+      expect(markerStep(180, width)).toBe(markerStep(180));
+    }
+  });
+
+  it("leaves the width-free behaviour exactly as it was", () => {
+    expect(markerStep(180)).toBe(5);
+    expect(markerStep(900)).toBe(30);
+    expect(markerStep(3600)).toBe(120);
+  });
+});
